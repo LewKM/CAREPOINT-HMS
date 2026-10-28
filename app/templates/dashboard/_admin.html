@@ -46,7 +46,7 @@
     <div class="card">
       <div class="card-head"><h2>{{ m.icon("users-round") }}Active staff</h2><a class="btn btn-sm btn-ghost" href="/admin/users">Manage</a></div>
       <ul class="list">
-        {% for r in Role %}<li><span class="grow">{{ r.label }}</span><span class="strong">{{ staff.get(r, 0) }}</span></li>{% endfor %}
+        {% for r in Role %}<li><span class="grow">{{ r.label }}</span><span class="count-pill">{{ staff.get(r, 0) }}</span></li>{% endfor %}
       </ul>
     </div>
     <div class="card">
@@ -58,9 +58,9 @@
     </div>
     <div class="card">
       <div class="card-head"><h2>{{ m.icon("scroll-text") }}Recent activity</h2><a class="btn btn-sm btn-ghost" href="/admin/audit">Audit log</a></div>
-      <ul class="list">
+      <ul class="list activity">
         {% for a in recent_audit %}
-        <li><div class="grow"><div class="strong small">{{ a.action }}</div><div class="small muted">{{ a.user.full_name if a.user else "System" }} · {{ a.created_at|ago }}</div></div></li>
+        <li><span class="dot"></span><div class="grow"><div class="strong small">{{ a.action }}</div><div class="small muted">{{ a.user.full_name if a.user else "System" }} · {{ a.created_at|ago }}</div></div></li>
         {% else %}<li class="muted">No activity yet.</li>{% endfor %}
       </ul>
     </div>

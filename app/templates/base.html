@@ -7,11 +7,11 @@
   <script>try{var t=localStorage.getItem("cp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css?v=4">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d7c74'/%3E%3Cpath d='M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z' fill='white'/%3E%3C/svg%3E">
   <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
-  <script src="/static/js/app.js?v=1" defer></script>
+  <script src="/static/js/app.js?v=2" defer></script>
 </head>
 <body>
 {% import "_macros.html" as m with context %}
@@ -46,17 +46,20 @@
   <div class="scrim"></div>
   <div class="main">
     <header class="topbar">
+      <div class="topbar-inner">
       <button class="icon-btn menu-btn" data-nav-toggle aria-label="Menu">{{ m.icon("menu") }}</button>
       {% if can(user, "patients.view") %}
       <form class="topbar-search" action="/patients" method="get" role="search">
         {{ m.icon("search") }}
-        <input type="search" name="q" placeholder="Find patient by name, MRN, phone or ID…" aria-label="Find patient">
+        <input type="search" name="q" placeholder="Find patient by name, MRN, phone or ID…" aria-label="Find patient" data-search>
+        <kbd aria-hidden="true">/</kbd>
       </form>
       {% endif %}
       <div class="topbar-meta">
-        <span class="date">{{ today().strftime("%A, %d %B %Y") }}</span>
+        <span class="date">{{ m.icon("calendar") }}{{ today().strftime("%A, %d %B %Y") }}</span>
         <span class="badge plain tone-primary">{{ user.role.label }}</span>
         <button class="icon-btn theme-btn" data-theme-toggle title="Toggle theme" aria-label="Toggle dark mode">{{ m.icon("sun-moon") }}</button>
+      </div>
       </div>
     </header>
     <main class="content">

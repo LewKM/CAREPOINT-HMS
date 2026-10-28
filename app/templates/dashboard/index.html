@@ -2,6 +2,17 @@
 {% import "_macros.html" as m with context %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-{{ m.page_head("Welcome, " ~ user.display_name, role_summaries[user.role]) }}
+{% set hour = now().hour %}
+<section class="hero">
+  <div>
+    <div class="eyebrow">{{ m.icon("sparkles") }}{{ user.role.label }} dashboard</div>
+    <h1>Good {{ "morning" if hour < 12 else "afternoon" if hour < 17 else "evening" }}, {{ user.display_name }}</h1>
+    <p class="sub">{{ role_summaries[user.role] }}</p>
+  </div>
+  <div class="hero-side">
+    <span class="pill">{{ m.icon("calendar-days") }}{{ today().strftime("%a, %d %b %Y") }}</span>
+    <span class="pill">{{ m.icon("hospital") }}{{ settings.hospital_name }}</span>
+  </div>
+</section>
 {% include partial %}
 {% endblock %}

@@ -44,12 +44,61 @@
   });
 
   // ---- flashes
+  function dismiss(f) {
+    f.classList.add("leaving");
+    f.addEventListener("animationend", () => f.remove(), { once: true });
+  }
   function flashes() {
     document.querySelectorAll(".flash").forEach((f) => {
-      f.querySelector("button")?.addEventListener("click", () => f.remove());
-      if (f.classList.contains("success")) setTimeout(() => f.remove(), 6000);
+      f.querySelector("button")?.addEventListener("click", () => dismiss(f));
+      if (f.classList.contains("success")) setTimeout(() => dismiss(f), 6000);
     });
   }
+
+  // ---- motion: stagger index for entrance animations, count-up stat values
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function stagger() {
+    document.querySelectorAll(".content, .stats, .stack, .grid, .beds").forEach((list) => {
+      Array.from(list.children).forEach((el, i) => el.style.setProperty("--i", i));
+    });
+  }
+  function countUp() {
+    if (calm) return;
+    document.querySelectorAll("[data-count]").forEach((el) => {
+      const text = el.textContent.trim();
+      const nums = text.match(/\d[\d,]*(\.\d+)?/g);
+      if (!nums) return;
+      const parts = nums.map((n) => ({ value: parseFloat(n.replace(/,/g, "")), decimals: (n.split(".")[1] || "").length, commas: n.includes(",") }));
+      const fmt = (p, v) => p.commas || v >= 1000
+        ? v.toLocaleString("en-US", { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals })
+        : v.toFixed(p.decimals);
+      const start = performance.now(), dur = 900;
+      function frame(now) {
+        const t = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - t, 3);
+        let i = 0;
+        el.textContent = text.replace(/\d[\d,]*(\.\d+)?/g, () => { const p = parts[i++]; return fmt(p, t < 1 ? p.value * e : p.value); });
+        if (t < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // ---- topbar elevation on scroll
+  function topbar() {
+    const bar = document.querySelector(".topbar");
+    if (!bar) return;
+    const update = () => bar.classList.toggle("scrolled", window.scrollY > 4);
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+  }
+
+  // ---- "/" focuses patient search
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+    const search = document.querySelector("[data-search]");
+    if (search) { e.preventDefault(); search.focus(); }
+  });
 
   // ---- clickable table rows
   document.addEventListener("click", (e) => {
@@ -145,6 +194,9 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     icons();
+    stagger();
+    countUp();
+    topbar();
     flashes();
     document.querySelectorAll("[data-lookup]").forEach(initLookup);
     document.querySelectorAll("[data-repeat]").forEach(initRepeat);

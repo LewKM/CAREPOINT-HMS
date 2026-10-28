@@ -58,9 +58,9 @@
 {% endmacro %}
 
 {% macro stat(label, value, ico, tone="", note=None) %}
-<div class="stat">
+<div class="stat" data-tone="{{ tone or 'primary' }}">
   <div class="stat-icon {{ tone }}">{{ icon(ico) }}</div>
-  <div><div class="stat-label">{{ label }}</div><div class="stat-value">{{ value }}</div>{% if note %}<div class="stat-note">{{ note }}</div>{% endif %}</div>
+  <div><div class="stat-label">{{ label }}</div><div class="stat-value" data-count>{{ value }}</div>{% if note %}<div class="stat-note">{{ note }}</div>{% endif %}</div>
 </div>
 {% endmacro %}
 

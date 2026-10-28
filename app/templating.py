@@ -10,7 +10,7 @@ from . import models
 from .config import BASE_DIR, settings
 from .permissions import ROLE_SUMMARIES, can
 from .security import csrf_token
-from .utils import TZ, today_local
+from .utils import TZ, now_local, today_local
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
@@ -140,7 +140,7 @@ def query(request: Request, **changes) -> str:
 templates.env.filters.update(dt=fmt_dt, time=fmt_time, date=fmt_date, money=money, ago=ago, tone=tone)
 templates.env.globals.update(
     settings=settings, can=can, models=models, Role=models.Role,
-    role_summaries=ROLE_SUMMARIES, nav_active=nav_active, query=query, today=today_local, options=options, now_utc=models.utcnow,
+    role_summaries=ROLE_SUMMARIES, nav_active=nav_active, query=query, today=today_local, now=now_local, options=options, now_utc=models.utcnow,
 )
 
 
