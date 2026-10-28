@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Staff{% endblock %}
+{% block content %}
+{% call m.page_head("Staff accounts", "Each person's role decides what they can see and do.") %}
+  <a class="btn btn-primary" href="/admin/users/new">{{ m.icon("user-plus") }}Add staff member</a>
+{% endcall %}
+<div class="row-between" style="margin-bottom:14px;flex-wrap:wrap">
+  <nav class="tabs">
+    <a class="{{ 'active' if not role }}" href="{{ query(request, role=None) }}">All</a>
+    {% for r in Role %}<a class="{{ 'active' if role == r.value }}" href="{{ query(request, role=r.value) }}">{{ r.label.replace("Hospital ", "") }} <span class="count">{{ counts.get(r, 0) }}</span></a>{% endfor %}
+  </nav>
+  <form class="filters" method="get"><input type="hidden" name="role" value="{{ role }}"><input type="search" name="q" value="{{ q }}" placeholder="Name or email"><button class="btn">{{ m.icon("search") }}</button></form>
+</div>
+<div class="card">
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Role</th><th>Department</th><th>Licence no.</th><th>Last sign-in</th><th>Status</th></tr></thead>
+    <tbody>{% for s in users %}
+      <tr class="row-link" data-href="/admin/users/{{ s.id }}">
+        <td><div class="person"><span class="avatar">{{ s.initials }}</span><div><span class="strong">{{ s.display_name }}</span><div class="sub">{{ s.email }}</div></div></div></td>
+        <td>{{ s.role.label }}</td><td>{{ s.department.name if s.department else "—" }}</td><td class="mono">{{ s.license_no or "—" }}</td>
+        <td class="muted nowrap">{{ s.last_login_at|ago if s.last_login_at else "Never" }}</td>
+        <td>{% if not s.is_active %}<span class="badge tone-muted">Deactivated</span>{% elif s.locked_until and s.locked_until > now_utc() %}<span class="badge tone-danger">Locked</span>{% elif s.must_change_password %}<span class="badge tone-warn">Temp password</span>{% else %}<span class="badge tone-success">Active</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="6">{{ m.empty("No staff match.", "users") }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

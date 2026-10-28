@@ -1,0 +1,54 @@
+{% import "_macros.html" as m with context %}
+{% set occ = census|sum(attribute="occupied") %}{% set tot = census|sum(attribute="beds") %}
+<div class="stats">
+  {{ m.stat("Awaiting triage", triage|length, "activity", "warn") }}
+  {{ m.stat("Triaged, waiting for doctor", awaiting_doctor, "stethoscope", "info") }}
+  {{ m.stat("Inpatients", inpatients|length, "bed-double", "accent", occ ~ " of " ~ tot ~ " beds occupied") }}
+  {{ m.stat("Beds to turn over", cleaning|length, "spray-can", "danger" if cleaning else "success", "marked for cleaning") }}
+</div>
+<div class="split-wide">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("activity") }}Triage queue</h2><a class="btn btn-sm btn-ghost" href="/visits?status=waiting">Open queue</a></div>
+      {% if triage %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Patient</th><th>Priority</th><th>Doctor</th><th>Arrived</th><th></th></tr></thead>
+        <tbody>{% for e in triage %}
+          <tr><td>{{ m.patient_cell(e.patient, link=False) }}</td><td>{{ m.badge(e.priority) }}</td>
+            <td>{{ e.doctor.display_name if e.doctor else "Next available" }}</td><td class="muted nowrap">{{ e.checked_in_at|ago }}</td>
+            <td class="right"><a class="btn btn-sm btn-primary" href="/visits/{{ e.id }}#vitals">{{ m.icon("heart-pulse") }}Take vitals</a></td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}{{ m.empty("Nobody waiting for triage.", "circle-check") }}{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}Ward round list</h2><a class="btn btn-sm btn-ghost" href="/admissions">All admissions</a></div>
+      {% if inpatients %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Patient</th><th>Bed</th><th>Doctor</th><th>Day</th><th></th></tr></thead>
+        <tbody>{% for a in inpatients %}
+          <tr><td>{{ m.patient_cell(a.patient, link=False) }}</td><td>{{ a.bed.ward.name }}<div class="sub">{{ a.bed.label }}</div></td>
+            <td>{{ a.admitting_doctor.display_name }}</td><td>{{ a.days }}</td>
+            <td class="right"><a class="btn btn-sm" href="/admissions/{{ a.id }}">{{ m.icon("notebook-pen") }}Notes</a></td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}{{ m.empty("No admitted patients.", "bed") }}{% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("building") }}Census</h2><a class="btn btn-sm btn-ghost" href="/wards">Bed board</a></div>
+      <ul class="list">{% for c in census %}{% set pct = (c.occupied / c.beds * 100) if c.beds else 0 %}
+        <li><div class="grow"><div class="row-between"><span class="strong">{{ c.ward.name }}</span><span class="small">{{ c.occupied }}/{{ c.beds }}</span></div>
+          <div class="meter {{ 'hot' if pct >= 85 }}" style="margin-top:6px"><i style="width:{{ pct|round|int }}%"></i></div></div></li>
+      {% endfor %}</ul>
+    </div>
+    {% if cleaning %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("spray-can") }}Beds being cleaned</h2></div>
+      <ul class="list">{% for b in cleaning %}
+        <li><span class="grow">{{ b.ward.name }} · <strong>{{ b.label }}</strong></span>
+          {{ m.post_button("/wards/beds/" ~ b.id ~ "/status", "Ready", "check", "btn btn-sm btn-soft", extra='<input type="hidden" name="status" value="available">') }}</li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</div>

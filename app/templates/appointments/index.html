@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+{% call m.page_head("Appointments", day.strftime("%A, %d %B %Y") ~ " · " ~ appointments|length ~ " booked") %}
+  {% if can(user, "appointments.manage") %}<a class="btn btn-primary" href="/appointments/new">{{ m.icon("calendar-plus") }}Book appointment</a>{% endif %}
+{% endcall %}
+<div class="card">
+  <div class="card-head">
+    <form class="filters" method="get">
+      <a class="btn btn-sm btn-ghost" href="{{ query(request, day=prev_day.isoformat()) }}" aria-label="Previous day">{{ m.icon("chevron-left") }}</a>
+      <input type="date" name="day" value="{{ day.isoformat() }}" onchange="this.form.submit()" style="min-width:150px">
+      <a class="btn btn-sm btn-ghost" href="{{ query(request, day=next_day.isoformat()) }}" aria-label="Next day">{{ m.icon("chevron-right") }}</a>
+      <a class="btn btn-sm" href="{{ query(request, day=None) }}">Today</a>
+      <select name="doctor_id" onchange="this.form.submit()">
+        <option value="">All doctors</option>
+        {% for d in doctors %}<option value="{{ d.id }}" {{ 'selected' if doctor_id == d.id|string }}>{{ d.display_name }}</option>{% endfor %}
+      </select>
+      <select name="status" onchange="this.form.submit()">
+        <option value="">Any status</option>
+        {% for s in models.AppointmentStatus %}<option value="{{ s.value }}" {{ 'selected' if status == s.value }}>{{ s.label }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  {% if appointments %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in appointments %}
+      <tr>
+        <td class="strong nowrap">{{ a.scheduled_at|time }}<div class="sub">{{ a.duration_minutes }} min</div></td>
+        <td>{{ m.patient_cell(a.patient) }}</td>
+        <td>{{ a.doctor.display_name }}<div class="sub">{{ a.department.name }}</div></td>
+        <td>{{ a.reason or "—" }}</td>
+        <td>{{ m.badge(a.status) }}</td>
+        <td class="right nowrap">
+          {% if a.status == models.AppointmentStatus.SCHEDULED %}
+            {% if can(user, "visits.checkin") %}{{ m.post_button("/appointments/" ~ a.id ~ "/check-in", "Check in", "log-in", "btn btn-sm btn-primary") }}{% endif %}
+            {% if can(user, "appointments.manage") %}
+              {{ m.post_button("/appointments/" ~ a.id ~ "/no-show", "No-show", None, "btn btn-sm btn-ghost", confirm="Mark as no-show?") }}
+              {{ m.post_button("/appointments/" ~ a.id ~ "/cancel", "Cancel", None, "btn btn-sm btn-ghost", confirm="Cancel this appointment?") }}
+            {% endif %}
+          {% elif a.encounter and can(user, "patients.clinical") %}
+            <a class="btn btn-sm" href="/visits/{{ a.encounter.id }}">Visit {{ m.icon("arrow-right") }}</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    {% call m.empty("No appointments for this day.", "calendar") %}
+      {% if can(user, "appointments.manage") %}<a class="btn" href="/appointments/new">{{ m.icon("calendar-plus") }}Book one</a>{% endif %}
+    {% endcall %}
+  {% endif %}
+</div>
+{% endblock %}

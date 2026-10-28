@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Lab worklist{% endblock %}
+{% block content %}
+{{ m.page_head("Laboratory worklist", "STAT first, then urgent, then routine — oldest first within each.") }}
+<nav class="tabs" style="margin-bottom:14px">
+  {% for key, label in [("open","All open"),("ordered","To collect"),("collected","In process"),("completed","Resulted today")] %}
+    <a class="{{ 'active' if status == key }}" href="?status={{ key }}">{{ label }}</a>{% endfor %}
+</nav>
+<div class="card">
+  {% if orders %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Test</th><th>Patient</th><th>Priority</th><th>Requested by</th><th>Status</th><th>{{ "Resulted" if status == "completed" else "Ordered" }}</th><th></th></tr></thead>
+    <tbody>{% for o in orders %}
+      <tr class="row-link" data-href="/lab/orders/{{ o.id }}">
+        <td class="strong">{{ o.test.name }}<div class="sub">{{ o.test.code }} · {{ o.test.specimen }}</div></td>
+        <td>{{ m.patient_cell(o.patient, link=False) }}</td><td>{{ m.badge(o.priority) }}</td>
+        <td>{{ o.ordered_by.display_name }}</td>
+        <td>{{ m.badge(o.status) }}{% if o.is_abnormal %} <span class="badge tone-danger">Abnormal</span>{% endif %}</td>
+        <td class="nowrap muted">{{ (o.completed_at|time) if status == "completed" else (o.created_at|ago) }}</td>
+        <td class="right">
+          {% if o.status == models.LabStatus.ORDERED and can(user, "lab.process") %}{{ m.post_button("/lab/orders/" ~ o.id ~ "/collect", "Collect", "syringe", "btn btn-sm btn-primary") }}
+          {% elif o.status == models.LabStatus.COLLECTED %}<a class="btn btn-sm btn-primary" href="/lab/orders/{{ o.id }}">Enter result</a>
+          {% else %}<a class="btn btn-sm" href="/lab/orders/{{ o.id }}">View</a>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty("Nothing here — worklist clear.", "circle-check") }}{% endif %}
+</div>
+{% endblock %}

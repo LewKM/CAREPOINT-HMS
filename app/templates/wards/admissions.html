@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Admissions{% endblock %}
+{% block content %}
+{{ m.page_head("Admissions", "Inpatients currently on the wards, and discharge history.") }}
+<nav class="tabs" style="margin-bottom:14px">
+  <a class="{{ 'active' if status == 'admitted' }}" href="?status=admitted">Current inpatients</a>
+  <a class="{{ 'active' if status == 'discharged' }}" href="?status=discharged">Discharged</a>
+</nav>
+<div class="card">
+  {% if page.items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Patient</th><th>Ward / bed</th><th>Admitting doctor</th><th>Admitted</th><th>{{ "Days" if status == "admitted" else "Discharged" }}</th><th>Status</th></tr></thead>
+    <tbody>{% for a in page.items %}
+      <tr class="row-link" data-href="/admissions/{{ a.id }}">
+        <td>{{ m.patient_cell(a.patient, link=False) }}</td><td>{{ a.bed.ward.name }}<div class="sub">{{ a.bed.label }}</div></td>
+        <td>{{ a.admitting_doctor.display_name }}</td><td class="nowrap">{{ a.admitted_at|dt }}</td>
+        <td>{{ a.days if status == "admitted" else (a.discharged_at|dt) }}{% if a.discharge_condition %}<div class="sub">{{ a.discharge_condition }}</div>{% endif %}</td>
+        <td>{{ m.badge(a.status) }}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {{ m.pagination(page) }}
+  {% else %}{{ m.empty("No patients here.", "bed") }}{% endif %}
+</div>
+{% endblock %}

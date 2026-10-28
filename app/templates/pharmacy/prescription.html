@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Prescription #{{ rx.id }}{% endblock %}
+{% block content %}
+{% set pending = rx.status == models.PrescriptionStatus.PENDING %}
+<div class="crumbs"><a href="/pharmacy">Pharmacy</a> <span>/</span> RX-{{ rx.id }}</div>
+{% call m.patient_banner(patient) %}{{ m.badge(rx.status) }}{% endcall %}
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("pill") }}Items</h2><span class="small muted">Prescribed by {{ rx.doctor.display_name }} · {{ rx.created_at|dt }}</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Drug</th><th>Directions</th><th class="right">Qty</th>{% if pending %}<th class="right">In stock</th>{% endif %}<th class="right">Price</th></tr></thead>
+      <tbody>{% set ns = namespace(total=0, short=false) %}
+      {% for i in rx.items %}{% set line = i.drug.unit_price * i.quantity %}{% set ns.total = ns.total + line %}
+        {% set lacking = i.drug.stock_quantity < i.quantity %}{% if lacking %}{% set ns.short = true %}{% endif %}
+        <tr><td class="strong">{{ i.drug.label }}<div class="sub">{{ i.drug.generic_name or "" }}</div></td>
+          <td>{{ i.dose }} · {{ i.frequency }} · {{ i.duration_days }} days{% if i.instructions %}<div class="sub">{{ i.instructions }}</div>{% endif %}</td>
+          <td class="right strong">{{ i.quantity }}</td>
+          {% if pending %}<td class="right {{ 'danger-text strong' if lacking }}">{{ i.drug.stock_quantity }}</td>{% endif %}
+          <td class="right">{{ line|money }}</td></tr>
+      {% endfor %}</tbody>
+      <tfoot><tr><td colspan="{{ 4 if pending else 3 }}">Total charged to the bill on dispensing</td><td class="right">{{ ns.total|money }}</td></tr></tfoot>
+    </table></div>
+    {% if rx.notes %}<div class="card-body"><span class="muted small">Prescriber notes:</span> {{ rx.notes }}</div>{% endif %}
+  </div>
+  <div class="stack">
+    {% if pending and can(user, "pharmacy.dispense") %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("package-check") }}Dispense</h2></div>
+      <div class="card-body">
+        {% if ns.short %}<div class="alert danger" style="margin-bottom:12px">{{ m.icon("triangle-alert") }}<span>Not enough stock for every item. Restock or cancel with a reason.</span></div>{% endif %}
+        {% if patient.allergies %}<div class="alert warn" style="margin-bottom:12px">{{ m.icon("triangle-alert") }}<span>Allergies: <strong>{{ patient.allergies }}</strong></span></div>{% endif %}
+        <form method="post" action="/pharmacy/prescriptions/{{ rx.id }}/dispense" data-confirm="Confirm all items have been handed to the patient?">
+          {{ m.csrf() }}<button class="btn btn-primary btn-block" type="submit" {{ 'disabled' if ns.short }}>{{ m.icon("check") }}Mark as dispensed</button>
+        </form>
+        <hr>
+        <form method="post" action="/pharmacy/prescriptions/{{ rx.id }}/cancel" data-confirm="Cancel this prescription?">
+          {{ m.csrf() }}
+          {{ m.field("reason", "Cancel with reason", placeholder="Out of stock, patient declined…") }}
+          <button class="btn btn-block" type="submit">Cancel prescription</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="card"><div class="card-body"><dl class="kv" style="grid-template-columns:100px 1fr">
+      <dt>Status</dt><dd>{{ m.badge(rx.status) }}</dd>
+      {% if rx.dispensed_at %}<dt>Dispensed</dt><dd>{{ rx.dispensed_at|dt }}</dd><dt>By</dt><dd>{{ rx.dispensed_by.full_name }}</dd>{% endif %}
+      {% if rx.cancel_reason %}<dt>Reason</dt><dd>{{ rx.cancel_reason }}</dd>{% endif %}
+    </dl></div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

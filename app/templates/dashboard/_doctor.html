@@ -1,0 +1,57 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Waiting for me", queue|length, "users", "warn", "includes unassigned patients") }}
+  {{ m.stat("My appointments today", appointments|length, "calendar-days", "info") }}
+  {{ m.stat("Seen today", seen_today, "circle-check", "success") }}
+  {{ m.stat("My inpatients", inpatients|length, "bed-double", "accent") }}
+</div>
+<div class="split-wide">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("stethoscope") }}My queue</h2><a class="btn btn-sm btn-ghost" href="/visits?mine=1">Full queue {{ m.icon("arrow-right") }}</a></div>
+      {% if queue %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Patient</th><th>Priority</th><th>Status</th><th>Waiting</th><th></th></tr></thead>
+        <tbody>
+        {% for e in queue %}
+          <tr data-href="/visits/{{ e.id }}" class="row-link">
+            <td>{{ m.patient_cell(e.patient, link=False) }}<div class="sub" style="margin-left:42px">{{ e.chief_complaint or "" }}</div></td>
+            <td>{{ m.badge(e.priority) }}</td><td>{{ m.badge(e.status) }}</td>
+            <td class="nowrap muted">{{ e.checked_in_at|ago }}</td>
+            <td class="right"><a class="btn btn-sm btn-primary" href="/visits/{{ e.id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+        </tbody></table></div>
+      {% else %}{{ m.empty("No patients waiting. Nice.", "coffee") }}{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("calendar-days") }}Today's appointments</h2></div>
+      {% if appointments %}
+      <ul class="list">{% for a in appointments %}
+        <li><span class="strong nowrap" style="width:52px">{{ a.scheduled_at|time }}</span><div class="grow"><a href="/patients/{{ a.patient.id }}">{{ a.patient.full_name }}</a><div class="small muted">{{ a.reason or "—" }}</div></div>{{ m.badge(a.status) }}</li>
+      {% endfor %}</ul>
+      {% else %}{{ m.empty("No appointments booked for today.", "calendar") }}{% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("flask-conical") }}New lab results</h2></div>
+      {% if results %}
+      <ul class="list">{% for o in results %}
+        <li><div class="grow"><div class="strong">{{ o.test.name }} {% if o.is_abnormal %}<span class="badge tone-danger">Abnormal</span>{% endif %}</div>
+          <div class="small muted">{{ o.patient.full_name }} · {{ o.completed_at|ago }}</div>
+          <div class="small">{{ o.result_value|truncate(80) }}</div></div>
+          <a class="btn btn-sm" href="/visits/{{ o.encounter_id }}#labs">View</a></li>
+      {% endfor %}</ul>
+      {% else %}{{ m.empty("No results in the last 48 hours.", "flask-conical") }}{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}My inpatients</h2></div>
+      {% if inpatients %}
+      <ul class="list">{% for a in inpatients %}
+        <li><div class="grow"><a class="strong" href="/admissions/{{ a.id }}">{{ a.patient.full_name }}</a><div class="small muted">{{ a.bed.ward.name }} · {{ a.bed.label }} · day {{ a.days }}</div></div></li>
+      {% endfor %}</ul>
+      {% else %}{{ m.empty("No admitted patients under your care.", "bed") }}{% endif %}
+    </div>
+  </div>
+</div>

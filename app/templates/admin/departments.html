@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+{{ m.page_head("Departments", "Clinical departments take appointments and set the consultation fee charged at check-in.") }}
+<div class="split">
+  <div class="card"><div class="table-wrap"><table>
+    <thead><tr><th>Department</th><th>Code</th><th>Type</th><th class="right">Consultation fee</th><th class="right">Staff</th><th></th></tr></thead>
+    <tbody>{% for d, n in rows %}
+      <tr><td class="strong">{{ d.name }}<div class="sub">{{ d.description or "" }}</div></td><td class="mono">{{ d.code }}</td>
+        <td>{{ "Clinical" if d.is_clinical else "Support" }}</td><td class="right">{{ d.consultation_fee|money(False) if d.is_clinical else "—" }}</td><td class="right">{{ n }}</td>
+        <td class="right"><a class="btn btn-sm btn-ghost" href="?edit={{ d.id }}">Edit</a></td></tr>
+    {% else %}<tr><td colspan="6">{{ m.empty("No departments yet.", "building-2") }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("pencil" if editing else "plus") }}{{ "Edit " ~ editing.name if editing else "New department" }}</h2>{% if editing %}<a class="btn btn-sm btn-ghost" href="/admin/departments">New</a>{% endif %}</div>
+    <form method="post" action="/admin/departments" class="card-body">
+      {{ m.csrf() }}<input type="hidden" name="id" value="{{ editing.id if editing else '' }}">
+      {{ m.field("name", "Name", editing.name if editing else "", required=True) }}
+      <div class="form-grid">
+        {{ m.field("code", "Code", editing.code if editing else "", required=True, placeholder="OPD") }}
+        {{ m.field("consultation_fee", "Consultation fee", editing.consultation_fee if editing else "0", type="number", attrs='step="0.01" min="0"') }}
+      </div>
+      {{ m.field("description", "Description", editing.description if editing else "") }}
+      <div class="field"><label class="check"><input type="checkbox" name="is_clinical" {{ 'checked' if not editing or editing.is_clinical }}>Clinical (sees patients)</label></div>
+      <button class="btn btn-primary btn-block" type="submit">{{ m.icon("save") }}Save department</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

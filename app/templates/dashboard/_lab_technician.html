@@ -1,0 +1,19 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Samples to collect", to_collect, "syringe", "warn") }}
+  {{ m.stat("In process", in_process, "flask-conical", "info") }}
+  {{ m.stat("Resulted today", done_today, "circle-check", "success") }}
+  {{ m.stat("Abnormal today", abnormal_today, "triangle-alert", "danger" if abnormal_today else "success") }}
+</div>
+<div class="card">
+  <div class="card-head"><h2>{{ m.icon("list-checks") }}Worklist — most urgent first</h2><a class="btn btn-sm btn-ghost" href="/lab">Full worklist</a></div>
+  {% if worklist %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Test</th><th>Patient</th><th>Priority</th><th>Status</th><th>Ordered</th><th></th></tr></thead>
+    <tbody>{% for o in worklist %}
+      <tr><td class="strong">{{ o.test.name }}<div class="sub">{{ o.test.specimen }}</div></td><td>{{ m.patient_cell(o.patient, link=False) }}</td>
+        <td>{{ m.badge(o.priority) }}</td><td>{{ m.badge(o.status) }}</td><td class="muted nowrap">{{ o.created_at|ago }}</td>
+        <td class="right"><a class="btn btn-sm btn-primary" href="/lab/orders/{{ o.id }}">Open</a></td></tr>
+    {% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty("Worklist is clear.", "circle-check") }}{% endif %}
+</div>

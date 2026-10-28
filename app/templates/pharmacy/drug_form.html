@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ drug.name if drug else "Add drug" }}{% endblock %}
+{% block content %}
+{{ m.page_head(drug.label if drug else "Add a drug to the formulary", ("On hand: " ~ drug.stock_quantity) if drug else None, crumbs=[("Inventory", "/pharmacy/inventory")]) }}
+<div class="{{ 'split' if drug else '' }}">
+  <form method="post" action="{{ '/pharmacy/drugs/' ~ drug.id if drug else '/pharmacy/drugs/new' }}" class="card" style="{{ '' if drug else 'max-width:760px' }}">
+    {{ m.csrf() }}
+    <div class="card-body">
+      <div class="form-grid">
+        {{ m.field("name", "Brand / product name", form.name, errors, required=True) }}
+        {{ m.field("generic_name", "Generic name", form.generic_name, errors) }}
+        <div class="field {{ 'has-error' if errors.form }}"><label for="f-form">Dosage form <span class="req">*</span></label>
+          <select id="f-form" name="form" required><option value="">Select…</option>{% for f in forms %}<option {{ 'selected' if form.form == f }}>{{ f }}</option>{% endfor %}</select>
+          {% if errors.form %}<div class="error">{{ errors.form }}</div>{% endif %}</div>
+        {{ m.field("strength", "Strength", form.strength, errors, placeholder="500 mg") }}
+        {{ m.field("unit_price", "Price per unit (" ~ settings.currency ~ ")", form.unit_price, errors, type="number", required=True, attrs='step="0.01" min="0"') }}
+        {{ m.field("reorder_level", "Reorder level", form.reorder_level, errors, type="number", attrs='min="0"') }}
+        {{ m.field("expiry_date", "Expiry (earliest batch)", form.expiry_date, errors, type="date") }}
+        {% if not drug %}{{ m.field("opening_stock", "Opening stock", form.opening_stock, errors, type="number", attrs='min="0"') }}{% endif %}
+        {% if drug %}<div class="field" style="align-self:end"><label class="check"><input type="checkbox" name="is_active" {{ 'checked' if form.is_active == 'on' }}>Available for prescribing</label></div>{% endif %}
+      </div>
+    </div>
+    <div class="card-foot form-actions" style="margin:0">
+      <a class="btn btn-ghost" href="/pharmacy/inventory">Back</a>
+      <button class="btn btn-primary" type="submit">{{ m.icon("save") }}{{ "Save" if drug else "Add drug" }}</button>
+    </div>
+  </form>
+  {% if drug %}
+  <div class="stack">
+    <div class="card" id="stock">
+      <div class="card-head"><h2>{{ m.icon("package-plus") }}Adjust stock</h2></div>
+      <form method="post" action="/pharmacy/drugs/{{ drug.id }}/stock" class="card-body">
+        {{ m.csrf() }}
+        {{ m.select("kind", "Type", [("restock","Receive stock"),("write_off","Write off (expired / damaged)")], "restock", blank=None) }}
+        {{ m.field("quantity", "Quantity", type="number", required=True, attrs='min="1"') }}
+        {{ m.field("reference", "Reference / reason", placeholder="Supplier invoice no. or reason") }}
+        {{ m.field("expiry_date", "New batch expiry", type="date", hint="Updates the earliest-expiry date when receiving.") }}
+        <button class="btn btn-primary btn-block" type="submit">Update stock</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("history") }}Stock movements</h2></div>
+      <ul class="list">{% for mv in moves %}
+        <li><div class="grow"><div class="strong small">{{ mv.reason|replace("_", " ")|capitalize }} {% if mv.reference %}<span class="muted">· {{ mv.reference }}</span>{% endif %}</div>
+          <div class="small muted">{{ mv.created_at|dt }} · {{ mv.user.full_name if mv.user else "" }}</div></div>
+          <span class="strong {{ 'success-text' if mv.change > 0 else 'danger-text' }}">{{ "+" if mv.change > 0 }}{{ mv.change }}</span><span class="small muted" style="width:44px;text-align:right">{{ mv.balance_after }}</span></li>
+      {% else %}<li class="muted">No movements yet.</li>{% endfor %}</ul>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

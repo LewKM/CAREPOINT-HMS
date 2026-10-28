@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}New visit{% endblock %}
+{% block content %}
+{{ m.page_head("Start a walk-in or emergency visit", "The patient joins the triage queue and the department's consultation fee is added to their bill.", crumbs=[("Visit queue", "/visits")]) }}
+<form method="post" action="/visits/new" class="card" style="max-width:760px">
+  {{ m.csrf() }}
+  <div class="card-body">
+    {{ m.patient_lookup(patient, errors.get("patient_id")) }}
+    <div class="form-grid">
+      {{ m.select("department_id", "Department", options(departments), values.department_id, errors, required=True) }}
+      {{ m.select("doctor_id", "Doctor", options(doctors, "display_name"), values.doctor_id, errors, blank="Next available doctor") }}
+      {{ m.select("visit_type", "Visit type", [("outpatient","Outpatient"),("emergency","Emergency"),("follow_up","Follow-up")], values.visit_type or "outpatient", errors, blank=None) }}
+      {{ m.select("priority", "Priority", [("routine","Routine"),("urgent","Urgent"),("emergency","Emergency")], values.priority or "routine", errors, blank=None, hint="Triage can adjust this after vitals.") }}
+      {{ m.textarea("complaint", "Presenting complaint", values.complaint, errors, rows=2, cls="span-all", placeholder="What brought the patient in today?") }}
+    </div>
+  </div>
+  <div class="card-foot form-actions" style="margin:0">
+    <a class="btn btn-ghost" href="/visits">Cancel</a>
+    <button class="btn btn-primary" type="submit">{{ m.icon("log-in") }}Add to queue</button>
+  </div>
+</form>
+{% endblock %}

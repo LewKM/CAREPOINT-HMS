@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Book appointment{% endblock %}
+{% block content %}
+{{ m.page_head("Book an appointment", "The doctor's department is used for the consultation fee at check-in.", crumbs=[("Appointments", "/appointments")]) }}
+<form method="post" action="/appointments/new" class="card" style="max-width:760px">
+  {{ m.csrf() }}
+  <div class="card-body">
+    {{ m.patient_lookup(patient, errors.get("patient_id")) }}
+    <div class="field {{ 'has-error' if errors.doctor_id }}">
+      <label for="f-doctor_id">Doctor <span class="req">*</span></label>
+      <select id="f-doctor_id" name="doctor_id" required><option value="">Select…</option>
+        {% for d in doctors %}<option value="{{ d.id }}" {{ 'selected' if values.doctor_id == d.id|string }}>{{ d.display_name }}{% if d.department %} — {{ d.department.name }}{% endif %}</option>{% endfor %}
+      </select>
+      {% if errors.doctor_id %}<div class="error">{{ errors.doctor_id }}</div>{% endif %}
+    </div>
+    <div class="form-grid-3">
+      {{ m.field("day", "Date", values.day, errors, type="date", required=True, attrs='min="' ~ today().isoformat() ~ '"') }}
+      {{ m.field("at", "Time", values.at, errors, type="time", required=True, attrs='step="300"') }}
+      {{ m.select("duration", "Duration", [("15","15 min"),("20","20 min"),("30","30 min"),("45","45 min"),("60","1 hour")], values.duration or "20", errors, blank=None) }}
+    </div>
+    {% if errors.when %}<div class="alert danger" style="margin-bottom:14px">{{ m.icon("calendar-x") }}<span>{{ errors.when }}</span></div>{% endif %}
+    {{ m.field("reason", "Reason", values.reason, errors, placeholder="e.g. Review of BP medication") }}
+  </div>
+  <div class="card-foot form-actions" style="margin:0">
+    <a class="btn btn-ghost" href="/appointments">Cancel</a>
+    <button class="btn btn-primary" type="submit">{{ m.icon("calendar-check") }}Book appointment</button>
+  </div>
+</form>
+{% endblock %}

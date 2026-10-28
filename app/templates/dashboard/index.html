@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{{ m.page_head("Welcome, " ~ user.display_name, role_summaries[user.role]) }}
+{% include partial %}
+{% endblock %}

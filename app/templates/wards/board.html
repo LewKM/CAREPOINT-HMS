@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Wards & beds{% endblock %}
+{% block content %}
+{% set all_beds = wards|map(attribute="beds")|sum(start=[]) %}
+{% call m.page_head("Wards & beds", (all_beds|selectattr("status", "equalto", models.BedStatus.AVAILABLE)|list|length) ~ " of " ~ all_beds|length ~ " beds available") %}
+  <div class="legend">
+    <span><i style="background:var(--success)"></i>Available</span><span><i style="background:var(--danger)"></i>Occupied</span>
+    <span><i style="background:var(--warn)"></i>Cleaning</span><span><i style="background:var(--muted)"></i>Maintenance</span>
+  </div>
+{% endcall %}
+{% for w in wards %}
+<div class="card ward">
+  {% set occ = w.beds|selectattr("status", "equalto", models.BedStatus.OCCUPIED)|list|length %}
+  <div class="card-head"><h2>{{ m.icon("building") }}{{ w.name }} <span class="badge plain tone-muted">{{ w.ward_type.label }}</span></h2>
+    <span class="small muted">{{ occ }} / {{ w.beds|length }} occupied · {{ w.daily_rate|money }}/day</span></div>
+  {% if w.beds %}
+  <div class="beds">
+    {% for b in w.beds %}{% set a = occupants.get(b.id) %}
+      <div class="bed {{ b.status.value }}">
+        <div class="bed-label">{{ m.icon("bed") }}{{ b.label }}</div>
+        {% if a %}
+          <a class="bed-who" href="/admissions/{{ a.id }}">{{ a.patient.full_name }}</a>
+          <div class="bed-sub">{{ a.patient.gender.label }}, {{ a.patient.age }} y · day {{ a.days }}</div>
+        {% else %}
+          {% if not can(user, "wards.beds") %}<div class="bed-sub">{{ b.status.label }}</div>{% endif %}
+          {% if can(user, "wards.beds") %}
+          <form method="post" action="/wards/beds/{{ b.id }}/status">
+            {{ m.csrf() }}
+            <select name="status" onchange="this.form.requestSubmit()" aria-label="Bed status for {{ b.label }}">
+              {% for s in [models.BedStatus.AVAILABLE, models.BedStatus.CLEANING, models.BedStatus.MAINTENANCE] %}
+                <option value="{{ s.value }}" {{ 'selected' if b.status == s }}>{{ s.label }}</option>{% endfor %}
+            </select>
+          </form>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}{{ m.empty("No beds in this ward yet.", "bed") }}{% endif %}
+</div>
+{% else %}
+  {% call m.empty("No wards configured.", "building") %}{% if can(user, "admin.config") %}<a class="btn btn-primary" href="/admin/wards">Set up wards</a>{% endif %}{% endcall %}
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,68 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Registered patients", "{:,}".format(patients_total), "users", "", "+" ~ patients_today ~ " today") }}
+  {{ m.stat("Appointments today", appointments_today, "calendar-days", "info") }}
+  {{ m.stat("Patients in clinic", visits_active, "stethoscope", "accent", "open visits right now") }}
+  {{ m.stat("Bed occupancy", (beds_occupied ~ " / " ~ beds_total), "bed-double", "warn",
+            (((beds_occupied / beds_total * 100) | round | int) ~ "% occupied") if beds_total else "no beds set up") }}
+  {{ m.stat("Collected today", collected_today|money, "wallet", "success", "This month: " ~ collected_month|money) }}
+  {{ m.stat("Outstanding bills", outstanding|money, "receipt", "danger") }}
+</div>
+<div class="split-wide">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}Ward census</h2><a class="btn btn-sm btn-ghost" href="/wards">Bed board {{ m.icon("arrow-right") }}</a></div>
+      {% if census %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ward</th><th>Type</th><th class="right">Occupied</th><th style="width:30%">Load</th><th class="right">Daily rate</th></tr></thead>
+        <tbody>
+        {% for c in census %}{% set pct = (c.occupied / c.beds * 100) if c.beds else 0 %}
+          <tr><td class="strong">{{ c.ward.name }}</td><td>{{ c.ward.ward_type.label }}</td>
+            <td class="right">{{ c.occupied }} / {{ c.beds }}</td>
+            <td><div class="meter {{ 'hot' if pct >= 85 }}"><i style="width:{{ pct|round|int }}%"></i></div></td>
+            <td class="right">{{ c.ward.daily_rate|money }}</td></tr>
+        {% endfor %}
+        </tbody></table></div>
+      {% else %}{{ m.empty("No wards configured yet.", "bed") }}{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("building-2") }}Department load today</h2><span class="small muted">Appointments booked</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Department</th><th class="right">Appointments</th></tr></thead>
+        <tbody>{% for name, n in dept_load %}<tr><td>{{ name }}</td><td class="right strong">{{ n }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("chart-no-axes-column") }}Billed this month by service</h2></div>
+      {% if revenue_by_cat %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Service</th><th class="right">Billed</th></tr></thead>
+        <tbody>{% for cat, amt in revenue_by_cat %}<tr><td>{{ cat.label }}</td><td class="right strong">{{ amt|money }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}{{ m.empty("Nothing billed yet this month.", "receipt") }}{% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("users-round") }}Active staff</h2><a class="btn btn-sm btn-ghost" href="/admin/users">Manage</a></div>
+      <ul class="list">
+        {% for r in Role %}<li><span class="grow">{{ r.label }}</span><span class="strong">{{ staff.get(r, 0) }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("package") }}Pharmacy stock</h2></div>
+      <div class="card-body">
+        {% if low_stock %}<div class="alert warn">{{ m.icon("triangle-alert") }}<span><strong>{{ low_stock }}</strong> drug(s) at or below reorder level. <a href="/pharmacy/inventory?view=low">Review</a></span></div>
+        {% else %}<div class="alert success">{{ m.icon("circle-check") }}<span>All drugs above reorder level.</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("scroll-text") }}Recent activity</h2><a class="btn btn-sm btn-ghost" href="/admin/audit">Audit log</a></div>
+      <ul class="list">
+        {% for a in recent_audit %}
+        <li><div class="grow"><div class="strong small">{{ a.action }}</div><div class="small muted">{{ a.user.full_name if a.user else "System" }} · {{ a.created_at|ago }}</div></div></li>
+        {% else %}<li class="muted">No activity yet.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>

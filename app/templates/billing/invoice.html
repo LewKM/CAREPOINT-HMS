@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ inv.number }}{% endblock %}
+{% block content %}
+{% set void = inv.status == models.InvoiceStatus.VOID %}
+<div class="crumbs"><a href="/billing">Billing</a> <span>/</span> {{ inv.number }}</div>
+{% call m.patient_banner(patient, show_allergies=False) %}
+  {{ m.badge(inv.status) }}
+  <a class="btn" href="/billing/invoices/{{ inv.id }}/print" target="_blank">{{ m.icon("printer") }}Print</a>
+{% endcall %}
+<div class="stats">
+  {{ m.stat("Total billed", inv.total|money, "receipt") }}
+  {{ m.stat("Paid", inv.paid|money, "circle-check", "success") }}
+  {{ m.stat("Balance", inv.balance|money, "wallet", "danger" if inv.balance > 0 and not void else "success") }}
+</div>
+{% if void %}<div class="alert warn" style="margin-bottom:16px">{{ m.icon("ban") }}<span>Voided: {{ inv.void_reason }}</span></div>{% endif %}
+<div class="split">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("list") }}Charges</h2>{% if inv.encounter %}<span class="small muted">Visit #{{ inv.encounter.id }} · {{ inv.encounter.checked_in_at|date }}</span>{% endif %}</div>
+      {% if inv.items %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Category</th><th class="right">Qty</th><th class="right">Unit</th><th class="right">Amount</th></tr></thead>
+        <tbody>{% for it in inv.items %}
+          <tr><td>{{ it.description }}<div class="sub">{{ it.created_at|dt }}</div></td><td>{{ it.category.label }}</td>
+            <td class="right">{{ it.quantity }}</td><td class="right">{{ it.unit_price|money(False) }}</td>
+            <td class="right strong {{ 'success-text' if it.amount < 0 }}">{{ it.amount|money(False) }}</td></tr>
+        {% endfor %}</tbody>
+        <tfoot><tr><td colspan="4">Total</td><td class="right">{{ inv.total|money }}</td></tr></tfoot>
+      </table></div>
+      {% else %}{{ m.empty("No charges yet.", "receipt") }}{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("wallet") }}Payments</h2></div>
+      {% if inv.payments %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Received</th><th>Method</th><th>Reference</th><th>Cashier</th><th class="right">Amount</th></tr></thead>
+        <tbody>{% for p in inv.payments %}
+          <tr><td class="nowrap">{{ p.received_at|dt }}</td><td>{{ p.method.label }}</td><td class="mono">{{ p.reference or "—" }}</td>
+            <td>{{ cashiers[p.received_by_id].full_name if p.received_by_id in cashiers else "—" }}</td><td class="right strong">{{ p.amount|money(False) }}</td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}{{ m.empty("No payments yet.", "wallet") }}{% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    {% if not void and can(user, "billing.collect") and inv.balance > 0 %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("hand-coins") }}Receive payment</h2></div>
+      <form method="post" action="/billing/invoices/{{ inv.id }}/payments" class="card-body">
+        {{ m.csrf() }}
+        {{ m.field("amount", "Amount (" ~ settings.currency ~ ")", inv.balance, type="number", required=True, attrs='step="0.01" min="0.01" max="' ~ inv.balance ~ '"') }}
+        <div class="field"><label for="method">Method <span class="req">*</span></label>
+          <select id="method" name="method" required>{% for mt in methods %}<option value="{{ mt.value }}">{{ mt.label }}</option>{% endfor %}</select></div>
+        {{ m.field("reference", "Reference", placeholder="M-Pesa code, card slip or claim no.", hint="Required for everything except cash.") }}
+        <button class="btn btn-primary btn-block" type="submit">{{ m.icon("check") }}Record payment</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if not void and can(user, "billing.charge") %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("plus") }}Add charge or credit</h2></div>
+      <form method="post" action="/billing/invoices/{{ inv.id }}/items" class="card-body">
+        {{ m.csrf() }}
+        <div class="field"><label for="cat">Category</label><select id="cat" name="category" required>{% for c in categories %}<option value="{{ c.value }}" {{ 'selected' if c.value == 'procedure' }}>{{ c.label }}</option>{% endfor %}</select></div>
+        {{ m.field("description", "Description", required=True, placeholder="e.g. Wound dressing") }}
+        <div class="form-grid">
+          {{ m.field("quantity", "Qty", "1", type="number", attrs='min="1"') }}
+          {{ m.field("unit_price", "Unit price", type="number", required=True, attrs='step="0.01"', hint="Negative = credit / waiver") }}
+        </div>
+        <button class="btn btn-block" type="submit">Add to bill</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if not void and can(user, "billing.void") and not inv.payments %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("ban") }}Void invoice</h2></div>
+      <form method="post" action="/billing/invoices/{{ inv.id }}/void" class="card-body" data-confirm="Void this invoice? This can't be undone.">
+        {{ m.csrf() }}
+        {{ m.field("reason", "Reason", required=True) }}
+        <button class="btn btn-danger btn-block" type="submit">Void</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

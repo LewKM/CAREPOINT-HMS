@@ -1,0 +1,34 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Prescriptions waiting", pending|length, "clipboard-list", "warn") }}
+  {{ m.stat("Dispensed today", dispensed_today, "circle-check", "success") }}
+  {{ m.stat("Low stock", low_stock|length, "package-minus", "danger" if low_stock else "success") }}
+  {{ m.stat("Expiring ≤ 60 days", expiring|length, "calendar-clock", "warn" if expiring else "success") }}
+</div>
+<div class="split-wide">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("pill") }}Dispensing queue</h2><a class="btn btn-sm btn-ghost" href="/pharmacy">Open queue</a></div>
+    {% if pending %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Patient</th><th>Prescriber</th><th>Items</th><th>Sent</th><th></th></tr></thead>
+      <tbody>{% for rx in pending %}
+        <tr><td>{{ m.patient_cell(rx.patient, link=False) }}</td><td>{{ rx.doctor.display_name }}</td><td>{{ rx.items|length }}</td><td class="muted nowrap">{{ rx.created_at|ago }}</td>
+          <td class="right"><a class="btn btn-sm btn-primary" href="/pharmacy/prescriptions/{{ rx.id }}">Dispense</a></td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}{{ m.empty("No prescriptions waiting.", "circle-check") }}{% endif %}
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("package-minus") }}Reorder now</h2></div>
+      <ul class="list">{% for d in low_stock %}
+        <li><a class="grow" href="/pharmacy/drugs/{{ d.id }}">{{ d.label }}</a><span class="badge tone-danger">{{ d.stock_quantity }} left</span></li>
+      {% else %}<li class="muted">Nothing below reorder level.</li>{% endfor %}</ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("calendar-clock") }}Expiring soon</h2></div>
+      <ul class="list">{% for d in expiring %}
+        <li><a class="grow" href="/pharmacy/drugs/{{ d.id }}">{{ d.label }}</a><span class="badge tone-warn">{{ d.expiry_date|date }}</span></li>
+      {% else %}<li class="muted">Nothing expiring in the next 60 days.</li>{% endfor %}</ul>
+    </div>
+  </div>
+</div>

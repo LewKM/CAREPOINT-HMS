@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Sign in{% endblock %}
+{% block body %}
+<div class="auth">
+  <section class="auth-side">
+    <div class="brand" style="padding:0">
+      <span class="brand-mark">{{ m.icon("cross") }}</span>
+      <span><span class="brand-name">CarePoint HMS</span><br><span class="brand-sub" style="color:#9cc9c4">{{ settings.hospital_name }}</span></span>
+    </div>
+    <div style="position:relative;z-index:1">
+      <h1>One record for every patient, from the front desk to discharge.</h1>
+      <p>Registration, triage, consultations, wards, pharmacy, laboratory and billing — each team sees exactly what its work needs.</p>
+    </div>
+    <div class="auth-roles">
+      <div>{{ m.icon("stethoscope") }} Doctors &amp; nurses</div>
+      <div>{{ m.icon("concierge-bell") }} Reception</div>
+      <div>{{ m.icon("pill") }} Pharmacy</div>
+      <div>{{ m.icon("flask-conical") }} Laboratory</div>
+      <div>{{ m.icon("receipt") }} Billing</div>
+      <div>{{ m.icon("shield-check") }} Administration</div>
+    </div>
+  </section>
+  <section class="auth-main">
+    <form class="auth-card" method="post" action="/login">
+      {{ m.csrf() }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <h2>Staff sign in</h2>
+      <p class="sub">Use the work email your administrator registered.</p>
+      {% if error %}<div class="alert danger" style="margin-bottom:16px">{{ m.icon("circle-alert") }}<span>{{ error }}</span></div>{% endif %}
+      <div class="field"><label for="email">Email</label><input id="email" type="email" name="email" value="{{ email or '' }}" autocomplete="username" required autofocus></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" name="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary btn-block" type="submit">{{ m.icon("log-in") }}Sign in</button>
+      <p class="small muted" style="margin-top:18px;text-align:center">{{ m.icon("lock") }} Access is logged. Forgot your password? Ask the hospital administrator to reset it.</p>
+    </form>
+  </section>
+</div>
+{% endblock %}

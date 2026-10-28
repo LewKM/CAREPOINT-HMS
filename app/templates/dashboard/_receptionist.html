@@ -1,0 +1,29 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Booked today", appointments|length, "calendar-days", "info") }}
+  {{ m.stat("Still to arrive", counts[models.AppointmentStatus.SCHEDULED], "clock", "warn") }}
+  {{ m.stat("Checked in", counts[models.AppointmentStatus.CHECKED_IN] + counts[models.AppointmentStatus.COMPLETED], "user-round-check", "success") }}
+  {{ m.stat("Patients in clinic", in_queue, "stethoscope", "accent") }}
+</div>
+<div class="row" style="margin-bottom:16px">
+  <a class="btn btn-primary" href="/patients/new">{{ m.icon("user-plus") }}Register patient</a>
+  <a class="btn" href="/appointments/new">{{ m.icon("calendar-plus") }}Book appointment</a>
+  <a class="btn" href="/visits/new">{{ m.icon("siren") }}Walk-in / emergency</a>
+</div>
+<div class="split-wide">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("calendar-days") }}Today's appointments</h2><a class="btn btn-sm btn-ghost" href="/appointments">Full list</a></div>
+    {% if appointments %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Status</th><th></th></tr></thead>
+      <tbody>{% for a in appointments %}
+        <tr><td class="strong nowrap">{{ a.scheduled_at|time }}</td><td>{{ m.patient_cell(a.patient) }}</td><td>{{ a.doctor.display_name }}</td><td>{{ m.badge(a.status) }}</td>
+          <td class="right">{% if a.status == models.AppointmentStatus.SCHEDULED %}{{ m.post_button("/appointments/" ~ a.id ~ "/check-in", "Check in", "log-in", "btn btn-sm btn-primary") }}{% endif %}</td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}{{ m.empty("No appointments booked for today.", "calendar") }}{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("user-plus") }}Recently registered</h2></div>
+    <ul class="list">{% for p in recent_patients %}<li>{{ m.patient_cell(p) }}</li>{% else %}<li class="muted">No patients yet.</li>{% endfor %}</ul>
+  </div>
+</div>

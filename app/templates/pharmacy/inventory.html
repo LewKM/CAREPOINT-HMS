@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Drug inventory{% endblock %}
+{% block content %}
+{% call m.page_head("Drug inventory", "Formulary, stock on hand and expiry.") %}
+  <a class="btn btn-primary" href="/pharmacy/drugs/new">{{ m.icon("plus") }}Add drug</a>
+{% endcall %}
+<div class="row-between" style="margin-bottom:14px;flex-wrap:wrap">
+  <nav class="tabs">
+    {% for key, label in [("all","Active"),("low","Low stock"),("expiring","Expiring ≤ 60d"),("inactive","Inactive")] %}
+      <a class="{{ 'active' if view == key }}" href="{{ query(request, view=key, page=None) }}">{{ label }}</a>{% endfor %}
+  </nav>
+  <form class="filters" method="get"><input type="hidden" name="view" value="{{ view }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search drugs"><button class="btn">{{ m.icon("search") }}</button></form>
+</div>
+<div class="card">
+  {% if page.items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Drug</th><th>Form</th><th class="right">Unit price</th><th class="right">On hand</th><th class="right">Reorder at</th><th>Expiry</th></tr></thead>
+    <tbody>{% for d in page.items %}
+      <tr class="row-link" data-href="/pharmacy/drugs/{{ d.id }}">
+        <td class="strong">{{ d.name }} {{ d.strength or "" }}<div class="sub">{{ d.generic_name or "" }}</div></td>
+        <td>{{ d.form }}</td><td class="right">{{ d.unit_price|money(False) }}</td>
+        <td class="right">{% if d.is_low %}<span class="badge tone-danger">{{ d.stock_quantity }}</span>{% else %}<span class="strong">{{ d.stock_quantity }}</span>{% endif %}</td>
+        <td class="right muted">{{ d.reorder_level }}</td>
+        <td>{% if d.expiry_date %}<span class="{{ 'warn-text strong' if d.expires_soon }}">{{ d.expiry_date|date }}</span>{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody></table></div>
+  {{ m.pagination(page) }}
+  {% else %}{{ m.empty("No drugs match.", "package") }}{% endif %}
+</div>
+{% endblock %}

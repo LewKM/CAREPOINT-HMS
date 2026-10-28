@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ settings.app_name }}{% endblock %} · {{ settings.hospital_name }}</title>
+  <script>try{var t=localStorage.getItem("cp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css?v=3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d7c74'/%3E%3Cpath d='M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z' fill='white'/%3E%3C/svg%3E">
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
+  <script src="/static/js/app.js?v=1" defer></script>
+</head>
+<body>
+{% import "_macros.html" as m with context %}
+{% block body %}
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" style="text-decoration:none">
+      <span class="brand-mark">{{ m.icon("cross") }}</span>
+      <span><span class="brand-name">CarePoint</span><br><span class="brand-sub">{{ settings.hospital_name }}</span></span>
+    </a>
+    <nav class="nav">
+      {% for section, items in nav %}
+        <div class="nav-section">{{ section }}</div>
+        {% for label, href, ico, perm in items %}
+          <a href="{{ href }}" class="{{ 'active' if nav_active(request, href) }}">{{ m.icon(ico) }} {{ label }}</a>
+        {% endfor %}
+      {% endfor %}
+    </nav>
+    <div class="side-user">
+      <span class="avatar">{{ user.initials }}</span>
+      <div class="who">
+        <div class="name">{{ user.display_name }}</div>
+        <div class="role">{{ user.role.label }}</div>
+      </div>
+      <a class="icon-btn" href="/account/password" title="Change password" aria-label="Change password">{{ m.icon("key-round") }}</a>
+      <form method="post" action="/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="icon-btn" title="Sign out" aria-label="Sign out">{{ m.icon("log-out") }}</button>
+      </form>
+    </div>
+  </aside>
+  <div class="scrim"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" data-nav-toggle aria-label="Menu">{{ m.icon("menu") }}</button>
+      {% if can(user, "patients.view") %}
+      <form class="topbar-search" action="/patients" method="get" role="search">
+        {{ m.icon("search") }}
+        <input type="search" name="q" placeholder="Find patient by name, MRN, phone or ID…" aria-label="Find patient">
+      </form>
+      {% endif %}
+      <div class="topbar-meta">
+        <span class="date">{{ today().strftime("%A, %d %B %Y") }}</span>
+        <span class="badge plain tone-primary">{{ user.role.label }}</span>
+        <button class="icon-btn theme-btn" data-theme-toggle title="Toggle theme" aria-label="Toggle dark mode">{{ m.icon("sun-moon") }}</button>
+      </div>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+{% if flashes %}
+<div class="flashes" role="status">
+  {% for category, message in flashes %}
+  <div class="flash {{ category }}">{{ m.icon("circle-check" if category == "success" else "circle-alert") }}<span>{{ message }}</span><button aria-label="Dismiss">{{ m.icon("x") }}</button></div>
+  {% endfor %}
+</div>
+{% endif %}
+</body>
+</html>

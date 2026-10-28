@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Visit · {{ patient.full_name }}{% endblock %}
+{% block content %}
+{% set S = models.EncounterStatus %}
+{% set active = enc.is_active %}
+<div class="crumbs"><a href="/visits">Visit queue</a> <span>/</span> Visit #{{ enc.id }}</div>
+{% call m.patient_banner(patient) %}
+  {{ m.badge(enc.priority) }}
+  {% if active and can(user, "consult.perform") %}
+    {% if enc.status != S.IN_PROGRESS %}{{ m.post_button("/visits/" ~ enc.id ~ "/start", "Start consultation", "play", "btn btn-primary") }}
+    {% else %}{{ m.post_button("/visits/" ~ enc.id ~ "/complete", "Close visit", "circle-check", "btn btn-primary", confirm="Close this visit? Notes and orders will be locked.") }}{% endif %}
+  {% endif %}
+{% endcall %}
+
+{% set order = [S.WAITING, S.TRIAGED, S.IN_PROGRESS, S.COMPLETED] %}
+{% set idx = order.index(enc.status) %}
+<div class="steps">
+  {% for s, label in [(S.WAITING, "Checked in"), (S.TRIAGED, "Triaged"), (S.IN_PROGRESS, "With doctor"), (S.COMPLETED, "Completed")] %}
+    {% if not loop.first %}<span class="step-line {{ 'done' if loop.index0 <= idx }}"></span>{% endif %}
+    <span class="step {{ 'done' if loop.index0 < idx or (loop.last and idx == 3) else ('current' if loop.index0 == idx) }}"><span class="dot">{% if loop.index0 < idx or idx == 3 %}✓{% else %}{{ loop.index }}{% endif %}</span>{{ label }}</span>
+  {% endfor %}
+</div>
+
+{% if not active %}<div class="alert info" style="margin-bottom:16px">{{ m.icon("lock") }}<span>This visit was closed {{ enc.completed_at|dt }}. Records are read-only.</span></div>{% endif %}
+
+<div class="split">
+  <div class="stack">
+    {# ------------------------------------------------ consultation #}
+    <div class="card" id="consultation">
+      <div class="card-head"><h2>{{ m.icon("notebook-pen") }}Consultation</h2>{% if enc.started_at %}<span class="small muted">Started {{ enc.started_at|time }}</span>{% endif %}</div>
+      {% if active and can(user, "consult.perform") %}
+      <form method="post" action="/visits/{{ enc.id }}/notes" class="card-body">
+        {{ m.csrf() }}
+        <div class="form-grid">
+          {{ m.textarea("chief_complaint", "Presenting complaint", enc.chief_complaint, rows=2) }}
+          {{ m.textarea("history", "History of presenting illness", enc.history, rows=2) }}
+          {{ m.textarea("examination", "Examination findings", enc.examination, rows=3) }}
+          {{ m.textarea("diagnosis", "Diagnosis", enc.diagnosis, rows=3, placeholder="Working or final diagnosis — required to close the visit") }}
+          {{ m.textarea("treatment_plan", "Plan & advice", enc.treatment_plan, rows=3, cls="span-2") }}
+          {{ m.field("follow_up_date", "Follow-up date", enc.follow_up_date.isoformat() if enc.follow_up_date else "", type="date") }}
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">{{ m.icon("save") }}Save notes</button></div>
+      </form>
+      {% else %}
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Complaint</dt><dd class="pre">{{ enc.chief_complaint or "—" }}</dd>
+          <dt>History</dt><dd class="pre">{{ enc.history or "—" }}</dd>
+          <dt>Examination</dt><dd class="pre">{{ enc.examination or "—" }}</dd>
+          <dt>Diagnosis</dt><dd class="pre strong">{{ enc.diagnosis or "—" }}</dd>
+          <dt>Plan</dt><dd class="pre">{{ enc.treatment_plan or "—" }}</dd>
+          <dt>Follow-up</dt><dd>{{ enc.follow_up_date|date }}</dd>
+        </dl>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ------------------------------------------------ prescriptions #}
+    <div class="card" id="prescriptions">
+      <div class="card-head"><h2>{{ m.icon("pill") }}Prescriptions</h2></div>
+      {% if enc.prescriptions %}
+      <ul class="list">{% for rx in enc.prescriptions %}
+        <li style="align-items:flex-start"><div class="grow">
+          <div class="row-between"><span class="small muted">{{ rx.created_at|dt }}</span>
+            <span class="row">{{ m.badge(rx.status) }}
+              {% if rx.status == models.PrescriptionStatus.PENDING and active and can(user, "prescriptions.write") %}
+                {{ m.post_button("/visits/" ~ enc.id ~ "/prescriptions/" ~ rx.id ~ "/cancel", "Cancel", None, "btn btn-sm btn-ghost", confirm="Cancel this prescription?") }}{% endif %}</span></div>
+          <table style="margin-top:6px"><tbody>{% for i in rx.items %}
+            <tr><td style="padding:6px 0" class="strong">{{ i.drug.label }}</td><td style="padding:6px 8px">{{ i.dose }} · {{ i.frequency }} · {{ i.duration_days }} days</td><td style="padding:6px 0" class="right muted">Qty {{ i.quantity }}</td></tr>
+            {% if i.instructions %}<tr><td colspan="3" class="small muted" style="padding:0 0 6px">{{ i.instructions }}</td></tr>{% endif %}
+          {% endfor %}</tbody></table>
+          {% if rx.cancel_reason %}<div class="small warn-text">{{ rx.cancel_reason }}</div>{% endif %}
+        </div></li>
+      {% endfor %}</ul>
+      {% elif not (active and can(user, "prescriptions.write")) %}{{ m.empty("No prescriptions for this visit.", "pill") }}{% endif %}
+      {% if active and can(user, "prescriptions.write") %}
+      <form method="post" action="/visits/{{ enc.id }}/prescriptions" class="card-body" style="border-top:1px solid var(--border)" data-repeat>
+        {{ m.csrf() }}
+        <div class="fieldset-title">New prescription</div>
+        <div data-rows></div>
+        <template>
+          <div class="rx-row">
+            <div><label>Drug</label><select name="drug_id" required><option value="">Select drug…</option>
+              {% for d in drugs %}<option value="{{ d.id }}">{{ d.label }} — {{ d.stock_quantity }} in stock</option>{% endfor %}</select></div>
+            <div><label>Dose</label><input type="text" name="dose" placeholder="1 tab" required></div>
+            <div><label>Frequency</label><input type="text" name="frequency" list="freq-list" placeholder="BD" required></div>
+            <div><label>Days</label><input type="number" name="duration_days" min="1" value="5" required></div>
+            <div><label>Qty</label><input type="number" name="quantity" min="1" required></div>
+            <div><label>Instructions</label><input type="text" name="instructions" placeholder="After meals"></div>
+            <button type="button" class="icon-btn" data-remove-row aria-label="Remove">{{ m.icon("trash-2") }}</button>
+          </div>
+        </template>
+        <datalist id="freq-list"><option value="OD"><option value="BD"><option value="TDS"><option value="QID"><option value="Nocte"><option value="STAT"><option value="PRN"></datalist>
+        <div class="row-between" style="margin-top:4px">
+          <button type="button" class="btn btn-sm btn-ghost" data-add-row>{{ m.icon("plus") }}Add another drug</button>
+          <button class="btn btn-primary" type="submit">{{ m.icon("send") }}Send to pharmacy</button>
+        </div>
+        {% if patient.allergies %}<div class="alert danger" style="margin-top:12px">{{ m.icon("triangle-alert") }}<span>Check against allergies: <strong>{{ patient.allergies }}</strong></span></div>{% endif %}
+      </form>
+      {% endif %}
+    </div>
+
+    {# ------------------------------------------------ labs #}
+    <div class="card" id="labs">
+      <div class="card-head"><h2>{{ m.icon("flask-conical") }}Laboratory</h2></div>
+      {% if enc.lab_orders %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Test</th><th>Priority</th><th>Result</th><th>Status</th></tr></thead>
+        <tbody>{% for o in enc.lab_orders %}
+          <tr><td class="strong">{{ o.test.name }}<div class="sub">{{ o.created_at|time }}</div></td><td>{{ m.badge(o.priority) }}</td>
+            <td>{% if o.result_value %}<div class="{{ 'danger-text strong' if o.is_abnormal }}">{{ o.result_value }} {{ o.test.unit or "" }}{% if o.is_abnormal %} ⚠{% endif %}</div>
+                <div class="sub">Ref: {{ o.test.reference_range or "—" }}{% if o.result_notes %} · {{ o.result_notes }}{% endif %}</div>
+                {% else %}<span class="muted">{{ o.result_notes or "Pending" }}</span>{% endif %}</td>
+            <td>{{ m.badge(o.status) }}</td></tr>
+        {% endfor %}</tbody></table></div>
+      {% elif not (active and can(user, "lab.order")) %}{{ m.empty("No lab tests ordered.", "flask-conical") }}{% endif %}
+      {% if active and can(user, "lab.order") %}
+      <form method="post" action="/visits/{{ enc.id }}/lab-orders" class="card-body" style="border-top:1px solid var(--border)">
+        {{ m.csrf() }}
+        <div class="fieldset-title">Order tests</div>
+        <div class="checks">
+          {% for cat, items in tests|groupby("category") %}
+            <div class="check-group-title">{{ cat }}</div>
+            {% for t in items %}<label class="check"><input type="checkbox" name="test_id" value="{{ t.id }}">{{ t.name }} <span class="muted small">{{ t.price|money(False) }}</span></label>{% endfor %}
+          {% endfor %}
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+          {{ m.select("priority", "Priority", [("routine","Routine"),("urgent","Urgent"),("stat","STAT — immediately")], "routine", blank=None) }}
+          {{ m.field("clinical_notes", "Clinical notes for the lab", placeholder="e.g. febrile 3 days, ?malaria") }}
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">{{ m.icon("send") }}Send to lab</button></div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("info") }}Visit</h2>{{ m.badge(enc.status) }}</div>
+      <div class="card-body"><dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Department</dt><dd>{{ enc.department.name }}</dd>
+        <dt>Doctor</dt><dd>{{ enc.doctor.display_name if enc.doctor else "Not yet assigned" }}</dd>
+        <dt>Type</dt><dd>{{ enc.visit_type.label }}</dd>
+        <dt>Checked in</dt><dd>{{ enc.checked_in_at|dt }}</dd>
+        {% if enc.completed_at %}<dt>Closed</dt><dd>{{ enc.completed_at|dt }}</dd>{% endif %}
+      </dl></div>
+    </div>
+
+    <div class="card" id="vitals">
+      <div class="card-head"><h2>{{ m.icon("heart-pulse") }}Vitals</h2>{% if enc.vitals %}<span class="small muted">{{ enc.vitals|length }} reading(s)</span>{% endif %}</div>
+      {% if enc.vitals %}{% set v = enc.vitals[0] %}
+        <div class="card-body">
+          <div class="small muted" style="margin-bottom:8px">{{ v.recorded_at|dt }} · {{ v.recorded_by.full_name if v.recorded_by else "" }}</div>
+          {% include "visits/_vitals_tiles.html" %}
+          {% if v.flags %}<div class="alert danger" style="margin-top:10px">{{ m.icon("triangle-alert") }}<span>Out-of-range: {{ v.flags|join(", ")|replace("_", " ") }}</span></div>{% endif %}
+        </div>
+      {% endif %}
+      {% if active and can(user, "triage.record") %}
+      <form method="post" action="/visits/{{ enc.id }}/vitals" class="card-body" {% if enc.vitals %}style="border-top:1px solid var(--border)"{% endif %}>
+        {{ m.csrf() }}
+        <div class="fieldset-title">{{ "Record new vitals" if enc.vitals else "Triage" }}</div>
+        <div class="form-grid">
+          {{ m.field("temperature", "Temp (°C)", type="number", attrs='step="0.1" min="30" max="45"') }}
+          {{ m.field("pulse", "Pulse (bpm)", type="number") }}
+          {{ m.field("systolic", "Systolic", type="number") }}
+          {{ m.field("diastolic", "Diastolic", type="number") }}
+          {{ m.field("respiratory_rate", "Resp. rate", type="number") }}
+          {{ m.field("spo2", "SpO₂ (%)", type="number", attrs='max="100"') }}
+          {{ m.field("weight_kg", "Weight (kg)", type="number", attrs='step="0.1"') }}
+          {{ m.field("height_cm", "Height (cm)", type="number", attrs='step="0.1"') }}
+          {{ m.select("priority", "Triage priority", [("routine","Routine"),("urgent","Urgent"),("emergency","Emergency")], enc.priority.value, blank=None, cls="span-2") }}
+          {{ m.textarea("notes", "Triage notes", rows=2, cls="span-2") }}
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">{{ m.icon("save") }}Save vitals</button>
+      </form>
+      {% elif not enc.vitals %}{{ m.empty("No vitals recorded.", "heart-pulse") }}{% endif %}
+    </div>
+
+    <div class="card" id="admission">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}Admission</h2></div>
+      {% if enc.admission %}
+        <div class="card-body"><div class="row-between"><span>{{ m.badge(enc.admission.status) }} since {{ enc.admission.admitted_at|date }}</span>
+          <a class="btn btn-sm" href="/admissions/{{ enc.admission.id }}">Open {{ m.icon("arrow-right") }}</a></div></div>
+      {% elif active and can(user, "wards.admit") %}
+        <form method="post" action="/visits/{{ enc.id }}/admit" class="card-body" data-confirm="Admit this patient to the selected bed?">
+          {{ m.csrf() }}
+          {% if beds %}
+            <div class="field"><label for="bed">Bed <span class="req">*</span></label>
+              <select id="bed" name="bed_id" required><option value="">Choose an available bed…</option>
+                {% for ward, items in beds|groupby("ward.name") %}<optgroup label="{{ ward }}">{% for b in items %}<option value="{{ b.id }}">{{ b.label }} · {{ b.ward.daily_rate|money }}/day</option>{% endfor %}</optgroup>{% endfor %}
+              </select></div>
+            {{ m.textarea("reason", "Reason for admission", rows=2, required=True) }}
+            <button class="btn btn-block" type="submit">{{ m.icon("bed") }}Admit patient</button>
+          {% else %}<div class="alert warn">{{ m.icon("triangle-alert") }}<span>No beds are available right now.</span></div>{% endif %}
+        </form>
+      {% else %}{{ m.empty("Not admitted.", "bed") }}{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

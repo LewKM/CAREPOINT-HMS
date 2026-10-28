@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Collections{% endblock %}
+{% block content %}
+{% call m.page_head("Daily collections", day.strftime("%A, %d %B %Y")) %}
+  <form class="filters" method="get"><input type="date" name="day" value="{{ day.isoformat() }}" onchange="this.form.submit()"></form>
+  <button class="btn" onclick="window.print()">{{ m.icon("printer") }}Print</button>
+{% endcall %}
+<div class="stats">
+  {{ m.stat("Total collected", total|money, "wallet", "success", payments|length ~ " payment(s)") }}
+  {% for method, amt in by_method.items() %}{{ m.stat(method.label, amt|money, "banknote" if method.value == "cash" else ("smartphone" if method.value == "mpesa" else "credit-card"), "info") }}{% endfor %}
+</div>
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("list") }}Payments</h2></div>
+    {% if payments %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Time</th><th>Invoice</th><th>Patient</th><th>Method</th><th>Reference</th><th class="right">Amount</th></tr></thead>
+      <tbody>{% for p in payments %}
+        <tr class="row-link" data-href="/billing/invoices/{{ p.invoice_id }}"><td>{{ p.received_at|time }}</td><td class="mono">{{ p.invoice.number }}</td><td>{{ p.invoice.patient.full_name }}</td>
+          <td>{{ p.method.label }}</td><td class="mono">{{ p.reference or "—" }}</td><td class="right strong">{{ p.amount|money(False) }}</td></tr>
+      {% endfor %}</tbody>
+      <tfoot><tr><td colspan="5">Total</td><td class="right">{{ total|money }}</td></tr></tfoot></table></div>
+    {% else %}{{ m.empty("No payments on this day.", "wallet") }}{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("user-round") }}By cashier</h2></div>
+    <ul class="list">{% for name, amt in by_cashier.items() %}<li><span class="grow">{{ name }}</span><span class="strong">{{ amt|money }}</span></li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Admission · {{ patient.full_name }}{% endblock %}
+{% block content %}
+{% set current = adm.status == models.AdmissionStatus.ADMITTED %}
+<div class="crumbs"><a href="/admissions">Admissions</a> <span>/</span> #{{ adm.id }}</div>
+{% call m.patient_banner(patient, show_allergies=can(user, "patients.clinical")) %}
+  {{ m.badge(adm.status) }}
+  {% if can(user, "patients.clinical") %}<a class="btn" href="/visits/{{ adm.encounter_id }}">{{ m.icon("stethoscope") }}Visit record</a>{% endif %}
+{% endcall %}
+<div class="split">
+  <div class="stack">
+    {% if can(user, "patients.clinical") %}
+    <div class="card" id="notes">
+      <div class="card-head"><h2>{{ m.icon("notebook-pen") }}Ward notes</h2><span class="small muted">{{ adm.notes|length }} entries</span></div>
+      {% if current and can(user, "wards.notes") %}
+      <form method="post" action="/admissions/{{ adm.id }}/notes" class="card-body" style="border-bottom:1px solid var(--border)">
+        {{ m.csrf() }}
+        {{ m.textarea("body", ("Progress note" if user.role == Role.DOCTOR else "Nursing note"), rows=3, placeholder="Observations, medication given, plan…", required=True) }}
+        <div class="form-actions" style="margin:0"><button class="btn btn-primary" type="submit">{{ m.icon("plus") }}Add note</button></div>
+      </form>
+      {% endif %}
+      <div class="card-body">
+        {% if adm.notes %}
+        <ul class="timeline">{% for n in adm.notes %}
+          <li><span class="tdot {{ n.note_type.value }}"></span>
+            <div class="meta"><strong>{{ n.author.display_name }}</strong> · {{ n.note_type.label }} note · {{ n.created_at|dt }}</div>
+            <div class="pre">{{ n.body }}</div></li>
+        {% endfor %}</ul>
+        {% else %}<p class="muted">No notes yet.</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if not current %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2></div>
+      <div class="card-body"><dl class="kv">
+        <dt>Discharged</dt><dd>{{ adm.discharged_at|dt }}</dd>
+        <dt>Condition</dt><dd>{{ adm.discharge_condition }}</dd>
+        {% if can(user, "patients.clinical") %}<dt>Summary</dt><dd class="pre">{{ adm.discharge_summary }}</dd>{% endif %}
+      </dl></div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}Stay</h2></div>
+      <div class="card-body"><dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Ward</dt><dd>{{ adm.bed.ward.name }}</dd>
+        <dt>Bed</dt><dd class="strong">{{ adm.bed.label }}</dd>
+        <dt>Doctor</dt><dd>{{ adm.admitting_doctor.display_name }}</dd>
+        <dt>Admitted</dt><dd>{{ adm.admitted_at|dt }}</dd>
+        <dt>Length of stay</dt><dd>{{ adm.days }} day(s)</dd>
+        {% if can(user, "patients.clinical") %}<dt>Reason</dt><dd class="pre">{{ adm.reason }}</dd>{% endif %}
+      </dl></div>
+    </div>
+    {% if current and can(user, "wards.transfer") %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("arrow-right-left") }}Transfer bed</h2></div>
+      <form method="post" action="/admissions/{{ adm.id }}/transfer" class="card-body" data-confirm="Move the patient to the selected bed?">
+        {{ m.csrf() }}
+        {% if free_beds %}
+        <div class="field"><select name="bed_id" required aria-label="New bed"><option value="">Choose a bed…</option>
+          {% for ward, items in free_beds|groupby("ward.name") %}<optgroup label="{{ ward }}">{% for b in items %}<option value="{{ b.id }}">{{ b.label }}</option>{% endfor %}</optgroup>{% endfor %}
+        </select></div>
+        <button class="btn btn-block" type="submit">Transfer</button>
+        {% else %}<p class="muted">No free beds.</p>{% endif %}
+      </form>
+    </div>
+    {% endif %}
+    {% if current and can(user, "wards.discharge") %}
+    <div class="card" id="discharge">
+      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2></div>
+      <form method="post" action="/admissions/{{ adm.id }}/discharge" class="card-body" data-confirm="Discharge this patient? Ward charges will be added to the bill.">
+        {{ m.csrf() }}
+        <div class="field"><label for="cond">Condition at discharge <span class="req">*</span></label>
+          <select id="cond" name="condition" required><option value="">Choose…</option>{% for c in conditions %}<option>{{ c }}</option>{% endfor %}</select></div>
+        {{ m.textarea("summary", "Discharge summary", rows=4, placeholder="Diagnosis, treatment given, medication on discharge, follow-up", required=True) }}
+        <button class="btn btn-primary btn-block" type="submit">{{ m.icon("log-out") }}Discharge patient</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

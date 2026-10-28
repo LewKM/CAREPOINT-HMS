@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ patient.full_name }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="/patients">Patients</a> <span>/</span> {{ patient.mrn }}</div>
+{% call m.patient_banner(patient, show_allergies=can(user, "patients.clinical")) %}
+  {% if can(user, "patients.edit") %}<a class="btn" href="/patients/{{ patient.id }}/edit">{{ m.icon("pencil") }}Edit</a>{% endif %}
+  {% if can(user, "appointments.manage") %}<a class="btn" href="/appointments/new?patient_id={{ patient.id }}">{{ m.icon("calendar-plus") }}Book</a>{% endif %}
+  {% if active_visit %}
+    {% if can(user, "patients.clinical") %}<a class="btn btn-primary" href="/visits/{{ active_visit.id }}">{{ m.icon("stethoscope") }}Open current visit</a>
+    {% else %}<span class="badge tone-accent">In clinic · {{ active_visit.status.label }}</span>{% endif %}
+  {% elif can(user, "visits.checkin") %}
+    <a class="btn btn-primary" href="/visits/new?patient_id={{ patient.id }}">{{ m.icon("log-in") }}Start visit</a>
+  {% endif %}
+  {% if can(user, "billing.charge") %}{{ m.post_button("/billing/patients/" ~ patient.id ~ "/invoice", "Bill", "receipt", "btn") }}{% endif %}
+{% endcall %}
+
+<div class="split">
+  <div class="stack">
+    {% if can(user, "patients.clinical") %}
+      {% if latest_vitals %}{% set v = latest_vitals %}
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("heart-pulse") }}Latest vitals</h2><span class="small muted">{{ v.recorded_at|dt }}</span></div>
+        <div class="card-body">{% include "visits/_vitals_tiles.html" %}</div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("stethoscope") }}Visits</h2></div>
+        {% if visits %}
+        <div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Department</th><th>Doctor</th><th>Diagnosis</th><th>Status</th></tr></thead>
+          <tbody>{% for e in visits %}
+            <tr class="row-link" data-href="/visits/{{ e.id }}"><td class="nowrap">{{ e.checked_in_at|date }}</td><td>{{ e.department.name }}<div class="sub">{{ e.visit_type.label }}</div></td>
+              <td>{{ e.doctor.display_name if e.doctor else "—" }}</td><td>{{ (e.diagnosis or "—")|truncate(60) }}</td><td>{{ m.badge(e.status) }}</td></tr>
+          {% endfor %}</tbody></table></div>
+        {% else %}{{ m.empty("No visits yet.", "stethoscope") }}{% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("flask-conical") }}Lab results</h2></div>
+        {% if labs %}
+        <div class="table-wrap"><table>
+          <thead><tr><th>Test</th><th>Result</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>{% for o in labs %}
+            <tr><td class="strong">{{ o.test.name }}</td>
+              <td>{% if o.result_value %}<span class="{{ 'danger-text strong' if o.is_abnormal }}">{{ o.result_value|truncate(70) }}</span>{% if o.test.unit %} <span class="muted">{{ o.test.unit }}</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{{ m.badge(o.status) }}</td><td class="nowrap muted">{{ o.created_at|date }}</td></tr>
+          {% endfor %}</tbody></table></div>
+        {% else %}{{ m.empty("No lab tests ordered.", "flask-conical") }}{% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("pill") }}Prescriptions</h2></div>
+        {% if prescriptions %}
+        <ul class="list">{% for rx in prescriptions %}
+          <li><div class="grow">
+            <div class="row-between"><span class="strong">{{ rx.created_at|date }} · {{ rx.doctor.display_name }}</span>{{ m.badge(rx.status) }}</div>
+            <div class="small muted">{% for i in rx.items %}{{ i.drug.name }} {{ i.dose }} {{ i.frequency }} × {{ i.duration_days }}d{{ "; " if not loop.last }}{% endfor %}</div>
+          </div></li>
+        {% endfor %}</ul>
+        {% else %}{{ m.empty("No prescriptions.", "pill") }}{% endif %}
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("calendar-days") }}Appointments</h2></div>
+      {% if appointments %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Doctor</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>{% for a in appointments %}
+          <tr><td class="nowrap">{{ a.scheduled_at|dt }}</td><td>{{ a.doctor.display_name }}</td><td>{{ a.reason or "—" }}</td><td>{{ m.badge(a.status) }}</td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}{{ m.empty("No appointments.", "calendar") }}{% endif %}
+    </div>
+
+    {% if invoices is defined %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("receipt") }}Bills</h2></div>
+      {% if invoices %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Invoice</th><th>Date</th><th>Status</th><th class="right">Total</th><th class="right">Balance</th></tr></thead>
+        <tbody>{% for i in invoices %}
+          <tr class="row-link" data-href="/billing/invoices/{{ i.id }}"><td class="mono">{{ i.number }}</td><td>{{ i.created_at|date }}</td><td>{{ m.badge(i.status) }}</td>
+            <td class="right">{{ i.total|money }}</td><td class="right strong">{{ i.balance|money if i.status != models.InvoiceStatus.VOID else "—" }}</td></tr>
+        {% endfor %}</tbody></table></div>
+      {% else %}{{ m.empty("No bills.", "receipt") }}{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("id-card") }}Details</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>MRN</dt><dd class="mono">{{ patient.mrn }}</dd>
+          <dt>ID number</dt><dd>{{ patient.national_id or "—" }}</dd>
+          <dt>Date of birth</dt><dd>{{ patient.date_of_birth|date }} ({{ patient.age }} y)</dd>
+          <dt>Phone</dt><dd>{{ patient.phone or "—" }}</dd>
+          <dt>Email</dt><dd>{{ patient.email or "—" }}</dd>
+          <dt>Address</dt><dd>{{ patient.address or "—" }}</dd>
+          <dt>Registered</dt><dd>{{ patient.created_at|date }}</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("contact") }}Next of kin</h2></div>
+      <div class="card-body"><dl class="kv">
+        <dt>Name</dt><dd>{{ patient.next_of_kin_name or "—" }}</dd>
+        <dt>Relationship</dt><dd>{{ patient.next_of_kin_relation or "—" }}</dd>
+        <dt>Phone</dt><dd>{{ patient.next_of_kin_phone or "—" }}</dd>
+      </dl></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("shield-check") }}Cover</h2></div>
+      <div class="card-body"><dl class="kv">
+        <dt>Provider</dt><dd>{{ patient.insurance_provider or "Cash patient" }}</dd>
+        <dt>Member no.</dt><dd>{{ patient.insurance_number or "—" }}</dd>
+      </dl></div>
+    </div>
+    {% if can(user, "patients.clinical") and patient.chronic_conditions %}
+    <div class="card"><div class="card-head"><h2>{{ m.icon("activity") }}Chronic conditions</h2></div><div class="card-body pre">{{ patient.chronic_conditions }}</div></div>
+    {% endif %}
+    {% if admissions %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("bed-double") }}Admissions</h2></div>
+      <ul class="list">{% for a in admissions %}
+        <li><div class="grow">{% if can(user, "wards.view") %}<a class="strong" href="/admissions/{{ a.id }}">{{ a.admitted_at|date }}</a>{% else %}<span class="strong">{{ a.admitted_at|date }}</span>{% endif %}<div class="small muted">Bed {{ a.bed.label }} · {{ a.days }} day(s)</div></div>{{ m.badge(a.status) }}</li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

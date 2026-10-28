@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ o.test.name }} · {{ patient.full_name }}{% endblock %}
+{% block content %}
+{% set LS = models.LabStatus %}
+<div class="crumbs"><a href="/lab">Lab worklist</a> <span>/</span> Order #{{ o.id }}</div>
+{% call m.patient_banner(patient, show_allergies=False) %}{{ m.badge(o.priority) }} {{ m.badge(o.status) }}{% endcall %}
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("flask-conical") }}{{ o.test.name }}</h2><span class="mono muted">{{ o.test.code }}</span></div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Category</dt><dd>{{ o.test.category }}</dd>
+        <dt>Specimen</dt><dd>{{ o.test.specimen }}</dd>
+        <dt>Reference range</dt><dd>{{ o.test.reference_range or "—" }} {{ o.test.unit or "" }}</dd>
+        <dt>Requested by</dt><dd>{{ o.ordered_by.display_name }} · {{ o.created_at|dt }}</dd>
+        <dt>Clinical notes</dt><dd>{{ o.clinical_notes or "—" }}</dd>
+        {% if o.collected_at %}<dt>Collected</dt><dd>{{ o.collected_at|dt }}</dd>{% endif %}
+      </dl>
+      {% if o.status == LS.COMPLETED %}
+        <hr>
+        <div class="fieldset-title">Result</div>
+        <div class="{{ 'alert danger' if o.is_abnormal else 'alert success' }}">{{ m.icon("triangle-alert" if o.is_abnormal else "circle-check") }}
+          <div><strong>{{ o.result_value }} {{ o.test.unit or "" }}</strong>{% if o.result_notes %}<div>{{ o.result_notes }}</div>{% endif %}</div></div>
+        <p class="small muted" style="margin-top:8px">Released {{ o.completed_at|dt }} by {{ o.performed_by.full_name if o.performed_by else "—" }}</p>
+      {% elif o.status == LS.CANCELLED %}
+        <hr><div class="alert warn">{{ m.icon("ban") }}<span>{{ o.result_notes }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    {% if can(user, "lab.process") %}
+      {% if o.status == LS.ORDERED %}
+      <div class="card"><div class="card-body">
+        {{ m.post_button("/lab/orders/" ~ o.id ~ "/collect", "Sample collected", "syringe", "btn btn-primary btn-block") }}
+      </div></div>
+      {% elif o.status == LS.COLLECTED %}
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("clipboard-pen") }}Enter result</h2></div>
+        <form method="post" action="/lab/orders/{{ o.id }}/result" class="card-body" data-confirm="Release this result to the doctor? It can't be edited afterwards.">
+          {{ m.csrf() }}
+          {{ m.textarea("result_value", "Result" ~ (" (" ~ o.test.unit ~ ")" if o.test.unit else ""), rows=3, required=True, placeholder=o.test.reference_range or "") }}
+          {{ m.textarea("result_notes", "Comments", rows=2) }}
+          <div class="field"><label class="check"><input type="checkbox" name="is_abnormal">Flag as abnormal</label></div>
+          <button class="btn btn-primary btn-block" type="submit">{{ m.icon("send") }}Release result</button>
+        </form>
+      </div>
+      {% endif %}
+      {% if o.status in (LS.ORDERED, LS.COLLECTED) %}
+      <div class="card">
+        <div class="card-head"><h2>{{ m.icon("ban") }}Reject / cancel</h2></div>
+        <form method="post" action="/lab/orders/{{ o.id }}/cancel" class="card-body" data-confirm="Cancel this order? The charge will be credited back.">
+          {{ m.csrf() }}
+          {{ m.field("reason", "Reason", placeholder="Sample haemolysed, insufficient…") }}
+          <button class="btn btn-block" type="submit">Cancel order</button>
+        </form>
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

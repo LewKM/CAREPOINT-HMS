@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Pharmacy{% endblock %}
+{% block content %}
+{% call m.page_head("Pharmacy", "Prescriptions sent from consultations, oldest first.") %}
+  {% if can(user, "pharmacy.inventory") %}<a class="btn" href="/pharmacy/inventory">{{ m.icon("package") }}Inventory</a>{% endif %}
+{% endcall %}
+<nav class="tabs" style="margin-bottom:14px">
+  <a class="{{ 'active' if status == 'pending' }}" href="?status=pending">To dispense</a>
+  <a class="{{ 'active' if status == 'dispensed' }}" href="?status=dispensed">Recently dispensed</a>
+</nav>
+<div class="card">
+  {% if prescriptions %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Patient</th><th>Items</th><th>Prescriber</th><th>{{ "Sent" if status == "pending" else "Dispensed" }}</th><th>Stock</th><th></th></tr></thead>
+    <tbody>{% for rx in prescriptions %}
+      {% set lacking = [] %}{% for i in rx.items %}{% if i.drug.stock_quantity < i.quantity %}{% set _ = lacking.append(i) %}{% endif %}{% endfor %}
+      <tr class="row-link" data-href="/pharmacy/prescriptions/{{ rx.id }}">
+        <td>{{ m.patient_cell(rx.patient, link=False) }}</td>
+        <td>{% for i in rx.items %}<div class="small"><strong>{{ i.drug.name }}</strong> {{ i.drug.strength or "" }} × {{ i.quantity }}</div>{% endfor %}</td>
+        <td>{{ rx.doctor.display_name }}</td>
+        <td class="nowrap muted">{{ (rx.created_at|ago) if status == "pending" else (rx.dispensed_at|dt) }}</td>
+        <td>{% if status == "pending" %}{% if lacking %}<span class="badge tone-danger">{{ lacking|length }} short</span>{% else %}<span class="badge tone-success">In stock</span>{% endif %}{% else %}—{% endif %}</td>
+        <td class="right"><a class="btn btn-sm {{ 'btn-primary' if status == 'pending' }}" href="/pharmacy/prescriptions/{{ rx.id }}">{{ "Dispense" if status == "pending" else "View" }}</a></td>
+      </tr>
+    {% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty("Nothing waiting at the pharmacy." if status == "pending" else "Nothing dispensed yet.", "pill") }}{% endif %}
+</div>
+{% endblock %}

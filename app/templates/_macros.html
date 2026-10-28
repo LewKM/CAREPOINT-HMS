@@ -1,0 +1,127 @@
+{% macro icon(name, cls="") %}<i data-lucide="{{ name }}" class="{{ cls }}" aria-hidden="true"></i>{% endmacro %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+
+{% macro badge(value, label=None) -%}
+<span class="badge tone-{{ value|tone }}">{{ label or (value.label if value.label is defined else value) }}</span>
+{%- endmacro %}
+
+{% macro page_head(title, sub=None, crumbs=None) %}
+<div class="page-head">
+  <div>
+    {% if crumbs %}<div class="crumbs">{% for label, href in crumbs %}<a href="{{ href }}">{{ label }}</a> <span>/</span> {% endfor %}</div>{% endif %}
+    <h1>{{ title }}</h1>
+    {% if sub %}<div class="sub">{{ sub }}</div>{% endif %}
+  </div>
+  {% if caller %}<div class="actions">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro field(name, label, value="", errors={}, type="text", required=False, placeholder="", hint="", cls="", attrs="") %}
+<div class="field {{ cls }} {{ 'has-error' if errors.get(name) }}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span class="req">*</span>{% endif %}</label>
+  <input id="f-{{ name }}" type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" placeholder="{{ placeholder }}" {{ 'required' if required }} {{ attrs|safe }}>
+  {% if errors.get(name) %}<div class="error">{{ errors[name] }}</div>{% elif hint %}<div class="hint">{{ hint }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro select(name, label, options, value="", errors={}, required=False, blank="Select…", cls="", hint="") %}
+<div class="field {{ cls }} {{ 'has-error' if errors.get(name) }}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span class="req">*</span>{% endif %}</label>
+  <select id="f-{{ name }}" name="{{ name }}" {{ 'required' if required }}>
+    {% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}
+    {% for opt_value, opt_label in options %}
+      <option value="{{ opt_value }}" {{ 'selected' if opt_value|string == value|string }}>{{ opt_label }}</option>
+    {% endfor %}
+  </select>
+  {% if errors.get(name) %}<div class="error">{{ errors[name] }}</div>{% elif hint %}<div class="hint">{{ hint }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro textarea(name, label, value="", errors={}, rows=3, placeholder="", cls="", required=False) %}
+<div class="field {{ cls }} {{ 'has-error' if errors.get(name) }}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span class="req">*</span>{% endif %}</label>
+  <textarea id="f-{{ name }}" name="{{ name }}" rows="{{ rows }}" placeholder="{{ placeholder }}" {{ 'required' if required }}>{{ value or '' }}</textarea>
+  {% if errors.get(name) %}<div class="error">{{ errors[name] }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro post_button(action, label, ico=None, cls="btn", confirm=None, extra="") %}
+<form method="post" action="{{ action }}" class="inline" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+  {{ csrf() }}{{ extra|safe }}
+  <button class="{{ cls }}" type="submit">{% if ico %}{{ icon(ico) }}{% endif %}{{ label }}</button>
+</form>
+{% endmacro %}
+
+{% macro empty(text, ico="inbox") %}
+<div class="empty">{{ icon(ico) }}<p>{{ text }}</p>{% if caller %}<div style="margin-top:12px">{{ caller() }}</div>{% endif %}</div>
+{% endmacro %}
+
+{% macro stat(label, value, ico, tone="", note=None) %}
+<div class="stat">
+  <div class="stat-icon {{ tone }}">{{ icon(ico) }}</div>
+  <div><div class="stat-label">{{ label }}</div><div class="stat-value">{{ value }}</div>{% if note %}<div class="stat-note">{{ note }}</div>{% endif %}</div>
+</div>
+{% endmacro %}
+
+{% macro patient_cell(p, link=True) %}
+<div class="person">
+  <span class="avatar">{{ p.first_name[0] }}{{ p.last_name[0] }}</span>
+  <div>
+    {% if link %}<a class="strong" href="/patients/{{ p.id }}">{{ p.full_name }}</a>{% else %}<span class="strong">{{ p.full_name }}</span>{% endif %}
+    <div class="sub">{{ p.mrn }} · {{ p.age }} y · {{ p.gender.label }}</div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro patient_banner(p, show_allergies=True) %}
+<div class="patient-banner">
+  <span class="avatar">{{ p.first_name[0] }}{{ p.last_name[0] }}</span>
+  <div style="flex:1;min-width:220px">
+    <div class="pname"><a href="/patients/{{ p.id }}" style="color:inherit">{{ p.full_name }}</a></div>
+    <div class="facts">
+      <span>{{ icon("hash") }}{{ p.mrn }}</span>
+      <span>{{ icon("user") }}{{ p.gender.label }}, {{ p.age }} y</span>
+      <span>{{ icon("cake") }}{{ p.date_of_birth|date }}</span>
+      {% if p.blood_group %}<span>{{ icon("droplet") }}{{ p.blood_group }}</span>{% endif %}
+      {% if p.phone %}<span>{{ icon("phone") }}{{ p.phone }}</span>{% endif %}
+      {% if p.insurance_provider %}<span>{{ icon("shield-check") }}{{ p.insurance_provider }}</span>{% endif %}
+    </div>
+  </div>
+  {% if show_allergies %}
+    {% if p.allergies %}<span class="allergy">{{ icon("triangle-alert") }}Allergies: {{ p.allergies }}</span>
+    {% else %}<span class="allergy none">{{ icon("shield-check") }}No known allergies</span>{% endif %}
+  {% endif %}
+  {% if caller %}<div class="row">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro pagination(page) %}
+{% if page.pages > 1 %}
+<div class="pagination">
+  <span>Page {{ page.page }} of {{ page.pages }} · {{ page.total }} records</span>
+  <span class="row">
+    {% if page.has_prev %}<a class="btn btn-sm" href="{{ query(request, page=page.page - 1) }}">{{ icon("chevron-left") }}Prev</a>{% endif %}
+    {% if page.has_next %}<a class="btn btn-sm" href="{{ query(request, page=page.page + 1) }}">Next{{ icon("chevron-right") }}</a>{% endif %}
+  </span>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro patient_lookup(patient=None, error=None) %}
+<div class="field {{ 'has-error' if error }}">
+  <label>Patient <span class="req">*</span></label>
+  <div class="lookup" data-lookup>
+    <input type="hidden" name="patient_id" value="{{ patient.id if patient else '' }}">
+    <input type="search" class="lookup-input" placeholder="Search name, MRN, phone or ID number…" autocomplete="off" {{ 'hidden' if patient }}>
+    <div class="lookup-chip" {{ 'hidden' if not patient }}>
+      {{ icon("user-round-check") }}
+      <div class="grow"><div class="strong lookup-name">{{ patient.full_name if patient }}</div>
+        <div class="small muted lookup-meta">{% if patient %}{{ patient.mrn }} · {{ patient.age }} y · {{ patient.gender.label }}{% endif %}</div></div>
+      <button type="button" class="btn btn-sm btn-ghost">Change</button>
+    </div>
+    <div class="lookup-results" hidden></div>
+  </div>
+  {% if error %}<div class="error">{{ error }}</div>{% else %}<div class="hint">Not registered yet? <a href="/patients/new">Register the patient</a> first.</div>{% endif %}
+</div>
+{% endmacro %}

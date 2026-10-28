@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Patients{% endblock %}
+{% block content %}
+{% call m.page_head("Patients", page.total ~ " record" ~ ("s" if page.total != 1) ~ (" matching “" ~ q ~ "”" if q)) %}
+  {% if can(user, "patients.register") %}<a class="btn btn-primary" href="/patients/new">{{ m.icon("user-plus") }}Register patient</a>{% endif %}
+{% endcall %}
+<div class="card">
+  <div class="card-head">
+    <form class="filters" method="get" style="flex:1">
+      <input type="search" name="q" value="{{ q }}" placeholder="Name, MRN, phone or ID number" style="flex:1;max-width:420px">
+      <button class="btn">{{ m.icon("search") }}Search</button>
+      {% if q %}<a class="btn btn-ghost" href="/patients">Clear</a>{% endif %}
+    </form>
+  </div>
+  {% if page.items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Patient</th><th>Phone</th><th>ID number</th><th>Insurance</th><th>Registered</th></tr></thead>
+    <tbody>
+    {% for p in page.items %}
+      <tr class="row-link" data-href="/patients/{{ p.id }}">
+        <td>{{ m.patient_cell(p) }}</td><td>{{ p.phone or "—" }}</td><td>{{ p.national_id or "—" }}</td>
+        <td>{{ p.insurance_provider or "Cash" }}</td><td class="muted">{{ p.created_at|date }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {{ m.pagination(page) }}
+  {% else %}
+    {% call m.empty("No patients found." if q else "No patients registered yet.", "users") %}
+      {% if can(user, "patients.register") %}<a class="btn btn-primary" href="/patients/new">{{ m.icon("user-plus") }}Register the first patient</a>{% endif %}
+    {% endcall %}
+  {% endif %}
+</div>
+{% endblock %}

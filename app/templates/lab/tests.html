@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Lab test catalogue{% endblock %}
+{% block content %}
+{{ m.page_head("Lab test catalogue", "Tests doctors can order and what each one costs.") }}
+<div class="split">
+  <div class="card">
+    <div class="table-wrap"><table>
+      <thead><tr><th>Test</th><th>Specimen</th><th>Reference</th><th class="right">Price</th><th>TAT</th><th></th></tr></thead>
+      <tbody>{% for cat, items in tests|groupby("category") %}
+        <tr><td colspan="6" style="background:var(--surface-2)" class="small strong muted">{{ cat|upper }}</td></tr>
+        {% for t in items %}
+        <tr class="{{ 'muted' if not t.is_active }}"><td class="strong">{{ t.name }}<div class="sub mono">{{ t.code }}</div></td><td>{{ t.specimen }}</td>
+          <td class="small">{{ t.reference_range or "—" }} {{ t.unit or "" }}</td><td class="right">{{ t.price|money(False) }}</td><td>{{ t.turnaround_hours }} h</td>
+          <td class="right">{% if not t.is_active %}<span class="badge tone-muted">Inactive</span> {% endif %}<a class="btn btn-sm btn-ghost" href="/lab/tests/{{ t.id }}">Edit</a></td></tr>
+        {% endfor %}
+      {% else %}<tr><td colspan="6">{{ m.empty("No tests yet.", "test-tubes") }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("plus" if not edit else "pencil") }}{{ "Edit " ~ edit.name if edit else "New test" }}</h2>{% if edit %}<a class="btn btn-sm btn-ghost" href="/lab/tests">New</a>{% endif %}</div>
+    <form method="post" action="{{ '/lab/tests/' ~ edit.id if edit else '/lab/tests' }}" class="card-body">
+      {{ m.csrf() }}
+      <div class="form-grid">
+        {{ m.field("code", "Code", edit.code if edit else "", required=True) }}
+        {{ m.field("category", "Category", edit.category if edit else "", required=True, attrs='list="lab-cats"') }}
+        {{ m.field("name", "Name", edit.name if edit else "", required=True, cls="span-2") }}
+        {{ m.field("specimen", "Specimen", edit.specimen if edit else "", required=True, attrs='list="lab-specimens"') }}
+        {{ m.field("unit", "Unit", edit.unit if edit else "") }}
+        {{ m.field("reference_range", "Reference range", edit.reference_range if edit else "", cls="span-2") }}
+        {{ m.field("price", "Price", edit.price if edit else "", type="number", required=True, attrs='step="0.01" min="0"') }}
+        {{ m.field("turnaround_hours", "Turnaround (h)", edit.turnaround_hours if edit else "2", type="number") }}
+      </div>
+      <datalist id="lab-cats">{% for c in tests|map(attribute="category")|unique %}<option value="{{ c }}">{% endfor %}</datalist>
+      <datalist id="lab-specimens"><option value="Whole blood (EDTA)"><option value="Serum"><option value="Urine"><option value="Stool"><option value="Capillary blood"><option value="Swab"></datalist>
+      {% if edit %}<div class="field"><label class="check"><input type="checkbox" name="is_active" {{ 'checked' if edit.is_active }}>Available to order</label></div>{% endif %}
+      <button class="btn btn-primary btn-block" type="submit">{{ m.icon("save") }}Save test</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% import "_macros.html" as m with context %}
+<div class="stats">
+  {{ m.stat("Collected today", collected_today|money, "wallet", "success") }}
+  {{ m.stat("Collected by me", my_today|money, "hand-coins", "info") }}
+  {{ m.stat("Outstanding", outstanding|money, "receipt", "danger") }}
+</div>
+<div class="split-wide">
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("receipt") }}Bills awaiting payment</h2><a class="btn btn-sm btn-ghost" href="/billing">All bills</a></div>
+    {% if open_invoices %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Invoice</th><th>Patient</th><th>Status</th><th class="right">Balance</th><th></th></tr></thead>
+      <tbody>{% for i in open_invoices %}
+        <tr><td class="mono">{{ i.number }}<div class="sub">{{ i.created_at|ago }}</div></td><td>{{ m.patient_cell(i.patient, link=False) }}</td><td>{{ m.badge(i.status) }}</td>
+          <td class="right strong">{{ i.balance|money }}</td><td class="right"><a class="btn btn-sm btn-primary" href="/billing/invoices/{{ i.id }}">Collect</a></td></tr>
+      {% endfor %}</tbody></table></div>
+    {% else %}{{ m.empty("No unpaid bills.", "circle-check") }}{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("wallet") }}Today by method</h2><a class="btn btn-sm btn-ghost" href="/billing/payments">Report</a></div>
+    <ul class="list">{% for method, amount, n in by_method %}
+      <li><span class="grow">{{ method.label }} <span class="muted small">· {{ n }} txn</span></span><span class="strong">{{ amount|money }}</span></li>
+    {% else %}<li class="muted">No payments yet today.</li>{% endfor %}</ul>
+  </div>
+</div>

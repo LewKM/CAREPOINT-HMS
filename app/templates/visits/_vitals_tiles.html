@@ -1,0 +1,11 @@
+{% set f = v.flags %}
+<div class="vitals-grid">
+  <div class="vital {{ 'flag' if 'temperature' in f }}"><div class="k">Temp</div><div class="v">{{ v.temperature if v.temperature is not none else "—" }}<small> °C</small></div></div>
+  <div class="vital {{ 'flag' if 'bp' in f }}"><div class="k">Blood pressure</div><div class="v">{{ v.systolic or "—" }}/{{ v.diastolic or "—" }}<small> mmHg</small></div></div>
+  <div class="vital {{ 'flag' if 'pulse' in f }}"><div class="k">Pulse</div><div class="v">{{ v.pulse or "—" }}<small> bpm</small></div></div>
+  <div class="vital {{ 'flag' if 'respiratory_rate' in f }}"><div class="k">Resp. rate</div><div class="v">{{ v.respiratory_rate or "—" }}<small> /min</small></div></div>
+  <div class="vital {{ 'flag' if 'spo2' in f }}"><div class="k">SpO₂</div><div class="v">{{ v.spo2 or "—" }}<small> %</small></div></div>
+  <div class="vital"><div class="k">Weight</div><div class="v">{{ v.weight_kg or "—" }}<small> kg</small></div></div>
+  <div class="vital"><div class="k">BMI</div><div class="v">{{ v.bmi or "—" }}</div></div>
+</div>
+{% if v.notes %}<p class="small muted" style="margin-top:10px">{{ v.notes }}</p>{% endif %}

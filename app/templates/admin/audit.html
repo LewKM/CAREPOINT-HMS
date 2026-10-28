@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+{{ m.page_head("Audit log", "Every sign-in, record view and change, with who did it and from where.") }}
+<div class="card">
+  <div class="card-head">
+    <form class="filters" method="get">
+      <input type="search" name="q" value="{{ q }}" placeholder="Action or detail, e.g. patient.viewed">
+      <select name="user_id" onchange="this.form.submit()"><option value="">Everyone</option>
+        {% for s in staff %}<option value="{{ s.id }}" {{ 'selected' if user_id == s.id|string }}>{{ s.full_name }}</option>{% endfor %}</select>
+      <button class="btn">{{ m.icon("search") }}Filter</button>
+    </form>
+  </div>
+  {% if page.items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Detail</th><th>IP</th></tr></thead>
+    <tbody>{% for a in page.items %}
+      <tr><td class="nowrap">{{ a.created_at|dt("%d %b %Y, %H:%M:%S") }}</td><td>{{ a.user.full_name if a.user else "—" }}<div class="sub">{{ a.user.role.label if a.user else "" }}</div></td>
+        <td class="mono">{{ a.action }}</td><td class="mono small">{{ a.entity or "" }}{{ " #" ~ a.entity_id if a.entity_id }}</td>
+        <td class="small">{{ a.detail or "" }}</td><td class="mono small muted">{{ a.ip or "" }}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {{ m.pagination(page) }}
+  {% else %}{{ m.empty("No entries.", "scroll-text") }}{% endif %}
+</div>
+{% endblock %}

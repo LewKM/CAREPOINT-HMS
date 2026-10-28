@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Billing{% endblock %}
+{% block content %}
+{{ m.page_head("Billing", "Every visit has one bill; consultation, lab, pharmacy and ward charges post to it automatically.") }}
+<div class="row-between" style="margin-bottom:14px;flex-wrap:wrap">
+  <nav class="tabs">
+    {% for key, label in [("unpaid","Unpaid"),("paid","Paid"),("void","Void"),("all","All")] %}
+      <a class="{{ 'active' if status == key }}" href="{{ query(request, status=key, page=None) }}">{{ label }}</a>{% endfor %}
+  </nav>
+  <form class="filters" method="get"><input type="hidden" name="status" value="{{ status }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="Invoice no., patient, MRN, phone"><button class="btn">{{ m.icon("search") }}</button></form>
+</div>
+<div class="card">
+  {% if page.items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Invoice</th><th>Patient</th><th>Date</th><th>Status</th><th class="right">Total</th><th class="right">Paid</th><th class="right">Balance</th></tr></thead>
+    <tbody>{% for i in page.items %}
+      <tr class="row-link" data-href="/billing/invoices/{{ i.id }}">
+        <td class="mono">{{ i.number }}</td><td>{{ m.patient_cell(i.patient, link=False) }}</td><td class="nowrap">{{ i.created_at|dt }}</td>
+        <td>{{ m.badge(i.status) }}</td><td class="right">{{ i.total|money(False) }}</td><td class="right">{{ i.paid|money(False) }}</td>
+        <td class="right strong">{{ i.balance|money(False) if i.status != models.InvoiceStatus.VOID else "—" }}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {{ m.pagination(page) }}
+  {% else %}{{ m.empty("No bills here.", "receipt") }}{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ "Edit patient" if patient else "Register patient" }}{% endblock %}
+{% block content %}
+{{ m.page_head(("Edit " ~ patient.full_name) if patient else "Register a new patient",
+               "An MRN is issued automatically on save." if not patient else patient.mrn,
+               crumbs=[("Patients", "/patients")] + ([(patient.full_name, "/patients/" ~ patient.id)] if patient else [])) }}
+<form method="post" class="card" action="{{ '/patients/' ~ patient.id ~ '/edit' if patient else '/patients/new' }}">
+  {{ m.csrf() }}
+  <div class="card-body">
+    {% if errors %}<div class="alert danger" style="margin-bottom:16px">{{ m.icon("circle-alert") }}<span>Please fix the highlighted fields.</span></div>{% endif %}
+    <div class="fieldset-title">Identity</div>
+    <div class="form-grid-3">
+      {{ m.field("first_name", "First name", form.first_name, errors, required=True) }}
+      {{ m.field("last_name", "Last name", form.last_name, errors, required=True) }}
+      {{ m.select("gender", "Gender", [("male","Male"),("female","Female"),("other","Other")], form.gender, errors, required=True) }}
+      {{ m.field("date_of_birth", "Date of birth", form.date_of_birth, errors, type="date", required=True) }}
+      {{ m.field("national_id", "National ID / Passport / Birth cert.", form.national_id, errors) }}
+      <div class="field {{ 'has-error' if errors.blood_group }}">
+        <label for="f-blood_group">Blood group</label>
+        <select id="f-blood_group" name="blood_group"><option value="">Unknown</option>
+          {% for g in blood_groups %}<option {{ 'selected' if form.blood_group == g }}>{{ g }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div class="fieldset-title">Contact</div>
+    <div class="form-grid-3">
+      {{ m.field("phone", "Phone", form.phone, errors, type="tel", placeholder="07XX XXX XXX") }}
+      {{ m.field("email", "Email", form.email, errors, type="email") }}
+      {{ m.field("address", "Address / residence", form.address, errors) }}
+    </div>
+    <div class="fieldset-title">Next of kin</div>
+    <div class="form-grid-3">
+      {{ m.field("next_of_kin_name", "Name", form.next_of_kin_name, errors) }}
+      {{ m.field("next_of_kin_phone", "Phone", form.next_of_kin_phone, errors, type="tel") }}
+      {{ m.field("next_of_kin_relation", "Relationship", form.next_of_kin_relation, errors, placeholder="Spouse, parent…") }}
+    </div>
+    <div class="fieldset-title">Medical &amp; cover</div>
+    <div class="form-grid">
+      {{ m.textarea("allergies", "Known allergies", form.allergies, errors, rows=2, placeholder="e.g. Penicillin, sulfa drugs. Leave blank if none known.") }}
+      {{ m.textarea("chronic_conditions", "Chronic conditions", form.chronic_conditions, errors, rows=2, placeholder="e.g. Hypertension, diabetes") }}
+      {{ m.field("insurance_provider", "Insurance provider", form.insurance_provider, errors, placeholder="SHA, AAR, Jubilee… blank for cash") }}
+      {{ m.field("insurance_number", "Member number", form.insurance_number, errors) }}
+    </div>
+  </div>
+  <div class="card-foot form-actions" style="margin:0">
+    <a class="btn btn-ghost" href="{{ '/patients/' ~ patient.id if patient else '/patients' }}">Cancel</a>
+    <button class="btn btn-primary" type="submit">{{ m.icon("save") }}{{ "Save changes" if patient else "Register patient" }}</button>
+  </div>
+</form>
+{% endblock %}

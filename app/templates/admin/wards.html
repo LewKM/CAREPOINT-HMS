@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Ward setup{% endblock %}
+{% block content %}
+{{ m.page_head("Ward setup", "Wards, bed counts and daily bed charges.") }}
+<div class="split">
+  <div class="stack">
+    {% for w in wards %}
+    <div class="card">
+      <div class="card-head"><h2>{{ m.icon("building") }}{{ w.name }} <span class="badge plain tone-muted">{{ w.ward_type.label }}</span></h2>
+        <span class="small muted">{{ w.code }} · {{ w.beds|length }} beds · {{ w.daily_rate|money }}/day</span></div>
+      <div class="card-body">
+        <div class="row" style="margin-bottom:12px">
+          {% for b in w.beds %}
+            <form method="post" action="/admin/wards/beds/{{ b.id }}/delete" class="inline" data-confirm="Remove bed {{ b.label }}?">{{ m.csrf() }}
+              <button class="badge tone-{{ b.status.value|tone }}" style="border:0;cursor:pointer" title="Remove bed {{ b.label }}">{{ b.label }} ×</button></form>
+          {% endfor %}
+        </div>
+        <div class="row">
+          <form method="post" action="/admin/wards/{{ w.id }}/beds" class="row">{{ m.csrf() }}
+            <input type="number" name="count" value="1" min="1" max="100" style="width:80px" aria-label="Number of beds">
+            <button class="btn btn-sm" type="submit">{{ m.icon("plus") }}Add beds</button></form>
+          <details><summary class="btn btn-sm btn-ghost">Edit ward</summary>
+            <form method="post" action="/admin/wards" class="form-grid" style="margin-top:10px">{{ m.csrf() }}
+              <input type="hidden" name="id" value="{{ w.id }}">
+              {{ m.field("name", "Name", w.name) }}{{ m.field("code", "Code", w.code) }}
+              <div class="field"><label>Type</label><select name="ward_type">{% for t in ward_types %}<option value="{{ t.value }}" {{ 'selected' if t == w.ward_type }}>{{ t.label }}</option>{% endfor %}</select></div>
+              {{ m.field("daily_rate", "Daily rate", w.daily_rate, type="number", attrs='step="0.01" min="0"') }}
+              <div class="span-2"><button class="btn btn-primary btn-sm" type="submit">Save</button></div>
+            </form></details>
+        </div>
+      </div>
+    </div>
+    {% else %}<div class="card">{{ m.empty("No wards yet — create the first one.", "building") }}</div>{% endfor %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ m.icon("plus") }}New ward</h2></div>
+    <form method="post" action="/admin/wards" class="card-body">{{ m.csrf() }}
+      {{ m.field("name", "Name", required=True, placeholder="Female Medical Ward") }}
+      <div class="form-grid">
+        {{ m.field("code", "Code", required=True, placeholder="FMW", hint="Prefix for bed labels") }}
+        <div class="field"><label>Type <span class="req">*</span></label><select name="ward_type" required>{% for t in ward_types %}<option value="{{ t.value }}">{{ t.label }}</option>{% endfor %}</select></div>
+      </div>
+      {{ m.field("daily_rate", "Daily bed charge", "0", type="number", attrs='step="0.01" min="0"') }}
+      <button class="btn btn-primary btn-block" type="submit">Create ward</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
