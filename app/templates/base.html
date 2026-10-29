@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ settings.app_name }}{% endblock %} · {{ settings.hospital_name }}</title>
-  <script>try{var t=localStorage.getItem("cp-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+  <script>try{var d=document.documentElement,t=localStorage.getItem("cp-theme");if(t)d.dataset.theme=t;if(localStorage.getItem("cp-sidebar")==="rail")d.classList.add("rail")}catch(e){}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -18,32 +18,60 @@
 {% block body %}
 <div class="shell">
   <aside class="sidebar">
-    <a class="brand" href="/" style="text-decoration:none">
-      <span class="brand-mark">{{ m.icon("cross") }}</span>
-      <span><span class="brand-name">CarePoint</span><br><span class="brand-sub">{{ settings.hospital_name }}</span></span>
-    </a>
-    <nav class="nav">
+    <div class="side-head">
+      <a class="brand" href="/" style="text-decoration:none" data-tip="Dashboard">
+        <span class="brand-mark">{{ m.icon("cross") }}</span>
+        <span class="brand-text"><span class="brand-name">CarePoint</span><br><span class="brand-sub">{{ settings.hospital_name }}</span></span>
+      </a>
+      <button class="icon-btn rail-toggle" type="button" data-rail-toggle aria-label="Collapse sidebar" data-tip="Expand sidebar">
+        {{ m.icon("panel-left-close", "when-full") }}{{ m.icon("panel-left-open", "when-rail") }}
+      </button>
+    </div>
+    <nav class="nav" aria-label="Main">
       {% for section, items in nav %}
-        <div class="nav-section">{{ section }}</div>
-        {% for label, href, ico, perm in items %}
-          <a href="{{ href }}" class="{{ 'active' if nav_active(request, href) }}">{{ m.icon(ico) }} {{ label }}</a>
-        {% endfor %}
+        {% set gid = "nav-" ~ loop.index %}
+        <div class="nav-group" data-group="{{ section|lower|replace(' ', '-')|replace('&', '') }}">
+          <button class="nav-section" type="button" aria-expanded="true" aria-controls="{{ gid }}" data-group-toggle>
+            <span>{{ section }}</span>{{ m.icon("chevron-down", "caret") }}
+          </button>
+          <div class="nav-items" id="{{ gid }}"><div>
+            {% for label, href, ico, perm in items %}
+              {% set on = nav_active(request, href) %}
+              <a href="{{ href }}" class="{{ 'active' if on }}" data-tip="{{ label }}" {% if on %}aria-current="page"{% endif %}>{{ m.icon(ico) }}<span class="nav-label">{{ label }}</span></a>
+            {% endfor %}
+          </div></div>
+        </div>
       {% endfor %}
     </nav>
+    <script>
+      // Accordion, settled before first paint: only one group is open — the one holding the current
+      // page, or else the one opened last (pages outside the menu, like Change password).
+      (function () {
+        var groups = document.querySelectorAll(".nav-group"), open = document.querySelector(".nav-group a.active");
+        open = open ? open.closest(".nav-group").dataset.group : null;
+        if (!open) { try { open = localStorage.getItem("cp-nav-open"); } catch (e) {} }
+        groups.forEach(function (g) {
+          if (g.dataset.group === open) return;
+          g.classList.add("closed");
+          g.querySelector("[data-group-toggle]").setAttribute("aria-expanded", "false");
+        });
+      })();
+    </script>
     <div class="side-user">
-      <span class="avatar">{{ user.initials }}</span>
+      <span class="avatar" data-tip="{{ user.display_name }} · {{ user.role.label }}">{{ user.initials }}</span>
       <div class="who">
         <div class="name">{{ user.display_name }}</div>
         <div class="role">{{ user.role.label }}</div>
       </div>
-      <a class="icon-btn" href="/account/password" title="Change password" aria-label="Change password">{{ m.icon("key-round") }}</a>
+      <a class="icon-btn" href="/account/password" aria-label="Change password" data-tip="Change password">{{ m.icon("key-round") }}</a>
       <form method="post" action="/logout" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="icon-btn" title="Sign out" aria-label="Sign out">{{ m.icon("log-out") }}</button>
+        <button class="icon-btn" aria-label="Sign out" data-tip="Sign out">{{ m.icon("log-out") }}</button>
       </form>
     </div>
   </aside>
   <div class="scrim"></div>
+  <div class="rail-tip" role="tooltip" hidden></div>
   <div class="main">
     <header class="topbar">
       <div class="topbar-inner">

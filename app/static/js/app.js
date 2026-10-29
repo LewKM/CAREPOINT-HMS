@@ -43,6 +43,55 @@
     else if (e.target.classList.contains("scrim")) document.body.classList.remove("nav-open");
   });
 
+  // ---- sidebar: accordion menu groups, and the whole sidebar folding to an icon rail.
+  // base.html settles both before first paint.
+  const root = document.documentElement;
+  const railMode = () => root.classList.contains("rail") && window.matchMedia("(min-width: 901px)").matches;
+  function syncRailToggle() {
+    const label = root.classList.contains("rail") ? "Expand sidebar" : "Collapse sidebar";
+    document.querySelectorAll("[data-rail-toggle]").forEach((b) => { b.setAttribute("aria-label", label); b.dataset.tip = label; });
+  }
+  function toggleRail() {
+    root.classList.toggle("rail");
+    store.set("cp-sidebar", root.classList.contains("rail") ? "rail" : "full");
+    syncRailToggle(); hideTip();
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-rail-toggle]")) { toggleRail(); return; }
+    const head = e.target.closest("[data-group-toggle]");
+    if (!head) return;
+    // Accordion: opening a group closes whichever one was open; clicking the open one just closes it.
+    const group = head.closest(".nav-group");
+    const opening = group.classList.contains("closed");
+    document.querySelectorAll(".nav-group").forEach((g) => {
+      const open = opening && g === group;
+      g.classList.toggle("closed", !open);
+      g.querySelector("[data-group-toggle]").setAttribute("aria-expanded", String(open));
+    });
+    store.set("cp-nav-open", opening ? group.dataset.group : "");
+  });
+  document.addEventListener("keydown", (e) => {  // Ctrl/⌘+B folds the sidebar, as in most editors
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b" && !e.target.closest("input, textarea, select, [contenteditable]")) {
+      e.preventDefault(); toggleRail();
+    }
+  });
+
+  // Labels for icon-only controls: every nav link in the rail, and icon buttons at any width.
+  let tip;
+  function hideTip() { if (tip) tip.hidden = true; }
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest(".sidebar [data-tip]");
+    if (!el || !(railMode() || el.classList.contains("icon-btn"))) { hideTip(); return; }
+    tip = tip || document.querySelector(".rail-tip");
+    if (!tip) return;
+    const r = el.getBoundingClientRect();
+    tip.textContent = el.dataset.tip;
+    tip.style.left = `${r.right + 12}px`; tip.style.top = `${r.top + r.height / 2}px`;
+    tip.hidden = false;
+  });
+  document.addEventListener("focusin", (e) => { if (!e.target.closest?.(".sidebar")) hideTip(); });
+  document.querySelector(".nav")?.addEventListener("scroll", hideTip, { passive: true });
+
   // ---- confirm + double-submit guard
   document.addEventListener("submit", (e) => {
     const form = e.target;
@@ -327,6 +376,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    syncRailToggle();
     initPalette();
     initLive();
     stagger();

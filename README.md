@@ -78,6 +78,7 @@ The cashier only collects payments. Manual charges and credits are available for
 
 ## Working day
 
+- **Sidebar:** sections work as an accordion: opening one (Front desk, Finance…) closes the others, and the section holding the current page is the one open when a page loads. Use the panel button next to the logo, or **Ctrl+B**, to shrink the whole sidebar to an icon rail, where hovering an icon shows its name. The rail setting is remembered in this browser.
 - **Ctrl+K** (⌘K) opens the command palette: every page and action the role may use, plus patient search by name, MRN, phone or ID. `/` jumps to the patient search box.
 - Queues update themselves every 20–30 s: the visit queue, every dashboard, the pharmacy queue, the lab worklist and appointments. New arrivals are highlighted, and a background tab gets a ● in its title. A region the user is typing in is left alone.
 - Waiting times turn amber after 30 minutes and red after an hour.
