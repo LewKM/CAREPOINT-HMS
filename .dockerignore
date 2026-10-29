@@ -1,0 +1,22 @@
+# Ignore git directory.
+/.git/
+/.gitignore
+
+# Ignore all environment files.
+/.env*
+
+# The host virtualenv — the image builds its own.
+/.venv/
+
+# Ignore Python caches.
+**/__pycache__/
+**/*.pyc
+
+# Ignore development files
+/.vscode
+/.idea
+
+# Ignore Docker-related files
+/.dockerignore
+/Dockerfile*
+/docker-compose*.yml

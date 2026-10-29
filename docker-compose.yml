@@ -1,0 +1,23 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      HTTPS_ONLY: "true"   # served over HTTPS by caddy-proxy, so the session cookie is Secure-only
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      RUN_SEEDS: ${RUN_SEEDS:-false}
+      SEED_DEMO: "false"   # demo accounts share a published password — never in production
+    expose:
+      - "8000"
+    restart: unless-stopped
+    networks:
+      - web
+
+# caddy-proxy (in QZONE-OMS's compose) reaches this as carepoint-hms-web-1:8000
+# on the shared 'web' network.
+networks:
+  web:
+    external: true

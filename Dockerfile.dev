@@ -1,0 +1,25 @@
+# Dockerfile.dev
+FROM python:3.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Copy requirements early to leverage Docker cache
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire app (overlaid by the bind mount in docker-compose.dev.yml)
+COPY . .
+
+COPY entrypoint.sh /usr/bin/
+RUN chmod +x /usr/bin/entrypoint.sh
+
+# Expose port 8000
+EXPOSE 8000
+
+ENTRYPOINT ["entrypoint.sh"]
+# Default command for development (auto-reload on app/ changes)
+CMD ["uvicorn", "app.main:app", "--reload", "--reload-dir", "app", "--host", "0.0.0.0", "--port", "8000"]

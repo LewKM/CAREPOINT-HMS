@@ -1,0 +1,44 @@
+#!/bin/bash
+# Rebuild and start the dev stack on http://localhost:${WEB_PORT:-8010}
+#
+#   ./bin/dev-up                     # rebuild, start, tail logs
+#   RUN_SEEDS=true ./bin/dev-up      # also seed reference data + demo accounts
+#   WEB_PORT=8011 ./bin/dev-up       # if 8010 is taken
+set -e
+cd "$(dirname "$0")/.."
+
+COMPOSE="docker compose -f docker-compose.dev.yml"
+PORT="${WEB_PORT:-8010}"
+
+echo "🛑 Stopping dev containers..."
+$COMPOSE down --remove-orphans
+
+echo "🔌 Checking host port $PORT..."
+holder="$(docker ps --filter "publish=$PORT" --format '{{.Names}}')"
+if [ -n "$holder" ]; then
+  echo "❌ Port $PORT is held by '$holder'. Free it, or run e.g.  WEB_PORT=8011 ./bin/dev-up"
+  exit 1
+fi
+
+echo "🚀 Building the app container..."
+$COMPOSE build
+
+echo "▶️ Starting dev containers..."
+$COMPOSE up -d
+
+echo "⏳ Waiting for the app to answer /healthz..."
+for _ in $(seq 1 60); do
+  if curl -fsS "http://localhost:$PORT/healthz" > /dev/null 2>&1; then
+    echo "✅ CarePoint HMS is up on http://localhost:$PORT"
+    break
+  fi
+  sleep 2
+done
+curl -fsS "http://localhost:$PORT/healthz" > /dev/null 2>&1 || {
+  echo "❌ The app did not come up — recent logs:"
+  $COMPOSE logs --tail 50 web
+  exit 1
+}
+
+echo "📜 Tailing logs (Ctrl+C stops tailing, the stack keeps running)..."
+$COMPOSE logs -f web
