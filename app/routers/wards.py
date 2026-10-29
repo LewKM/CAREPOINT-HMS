@@ -13,6 +13,7 @@ from ..permissions import can
 from ..security import require
 from ..services.audit import audit
 from ..services.billing import charge
+from ..services.documents import document
 from ..templating import back, flash, redirect, render
 from ..utils import blank, get_or_404, paginate
 from .visits import close_encounter
@@ -95,7 +96,8 @@ def discharge_summary(request: Request, admission_id: int, user: User = Depends(
         raise HTTPException(409, "The discharge summary is available once the patient has been discharged.")
     audit(db, request, user, "admission.printed", "admission", adm.id, "discharge summary")
     db.commit()
-    return render(request, "print/discharge_summary.html", adm=adm, patient=adm.patient)
+    return document(request, "print/discharge_summary.html", f"Discharge-summary-{adm.patient.mrn}-{adm.id}",
+                    adm=adm, patient=adm.patient)
 
 
 def _current(db: Session, admission_id: int) -> Admission:

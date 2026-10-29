@@ -6,6 +6,7 @@ from urllib.parse import urlencode, urlparse
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 
 from . import models
 from .config import BASE_DIR, settings
@@ -162,6 +163,14 @@ def wait_tone(value: datetime | None) -> str:
     return "wait-danger" if mins >= 60 else "wait-warn" if mins >= 30 else ""
 
 
+def css_string(value) -> Markup:
+    """A quoted CSS string for @page margin boxes, safe inside <style>: <, > and & become CSS escapes."""
+    text = str(value).replace("\n", " ")
+    for ch, esc in (("\\", "\\\\"), ('"', '\\"'), ("<", "\\3c "), (">", "\\3e "), ("&", "\\26 ")):
+        text = text.replace(ch, esc)
+    return Markup(f'"{text}"')
+
+
 def options(items, label: str = "name", value: str = "id") -> list[tuple]:
     """(value, label) pairs for the select() macro."""
     return [(getattr(i, value), getattr(i, label)) for i in items]
@@ -178,7 +187,7 @@ def query(request: Request, **changes) -> str:
     return "?" + urlencode(params) if params else request.url.path
 
 
-templates.env.filters.update(dt=fmt_dt, time=fmt_time, date=fmt_date, money=money, ago=ago, tone=tone, wait_tone=wait_tone)
+templates.env.filters.update(dt=fmt_dt, time=fmt_time, date=fmt_date, money=money, ago=ago, tone=tone, wait_tone=wait_tone, css_string=css_string)
 templates.env.globals.update(
     settings=settings, can=can, models=models, Role=models.Role, asset=asset,
     role_summaries=ROLE_SUMMARIES, nav_active=nav_active, query=query, today=today_local, now=now_local, options=options, now_utc=models.utcnow,
@@ -191,7 +200,7 @@ def flash(request: Request, message: str, category: str = "success") -> None:
     request.session["_flash"] = request.session.get("_flash", []) + [[category, message]]
 
 
-def render(request: Request, template: str, status_code: int = 200, **ctx):
+def _page_context(request: Request, ctx: dict) -> dict:
     user = getattr(request.state, "user", None)
     ctx.update(
         user=user,
@@ -201,7 +210,16 @@ def render(request: Request, template: str, status_code: int = 200, **ctx):
         csrf_token=csrf_token(request),
         flashes=request.session.pop("_flash", []),
     )
-    return templates.TemplateResponse(request, template, ctx, status_code=status_code)
+    return ctx
+
+
+def render(request: Request, template: str, status_code: int = 200, **ctx):
+    return templates.TemplateResponse(request, template, _page_context(request, ctx), status_code=status_code)
+
+
+def render_html(request: Request, template: str, **ctx) -> str:
+    """The same page as render(), as a string — for the PDF renderer."""
+    return templates.get_template(template).render(request=request, **_page_context(request, ctx))
 
 
 def redirect(url: str) -> RedirectResponse:

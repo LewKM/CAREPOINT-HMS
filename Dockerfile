@@ -18,6 +18,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # -------------------------
 FROM python:3.14-slim
 
+# Pango + fonts for WeasyPrint (A4 PDF documents)
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

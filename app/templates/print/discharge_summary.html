@@ -1,27 +1,29 @@
 {% extends "print/base.html" %}
+{% import "print/_blocks.html" as d with context %}
 {% block title %}Discharge summary · {{ patient.full_name }}{% endblock %}
 {% block back %}/admissions/{{ adm.id }}{% endblock %}
+{% block subline %}{{ adm.bed.ward.name }}{% endblock %}
 {% block doc_title %}Discharge summary{% endblock %}
-{% block doc_meta %}Admission #{{ adm.id }}<br>{{ adm.bed.ward.name }} · {{ adm.bed.label }}{% endblock %}
+{% block doc_meta %}Admission #{{ adm.id }} · bed {{ adm.bed.label }}<br>Discharged {{ adm.discharged_at|dt }}{% endblock %}
+{% block status %}<span class="status {{ 'danger' if adm.discharge_condition == 'Deceased' else 'warn' if adm.discharge_condition in ('Referred', 'Against medical advice') else '' }}">{{ adm.discharge_condition or "Discharged" }}</span>{% endblock %}
 {% block content %}
-<div class="doc-section">
-  <h3>Stay</h3>
-  <dl class="kv">
-    <dt>Admitted</dt><dd>{{ adm.admitted_at|dt }}</dd>
-    <dt>Discharged</dt><dd>{{ adm.discharged_at|dt }}</dd>
-    <dt>Length of stay</dt><dd>{{ adm.days }} day(s)</dd>
-    <dt>Admitting doctor</dt><dd>{{ adm.admitting_doctor.full_name }}</dd>
-    <dt>Reason for admission</dt><dd class="pre">{{ adm.reason }}</dd>
-    <dt>Diagnosis</dt><dd class="pre strong">{{ adm.encounter.diagnosis or "—" }}</dd>
-    <dt>Condition at discharge</dt><dd class="strong">{{ adm.discharge_condition or "—" }}</dd>
-  </dl>
+<div class="section keep">
+  <h2>Admission</h2>
+  <table class="kv">
+    <tr><th>Admitted</th><td>{{ adm.admitted_at|dt }}</td></tr>
+    <tr><th>Discharged</th><td>{{ adm.discharged_at|dt }} · {{ adm.days }} day{{ "s" if adm.days != 1 }} in hospital</td></tr>
+    <tr><th>Ward · bed</th><td>{{ adm.bed.ward.name }} · {{ adm.bed.label }}</td></tr>
+    <tr><th>Admitting doctor</th><td>{{ adm.admitting_doctor.full_name }}</td></tr>
+    <tr><th>Reason for admission</th><td class="pre">{{ adm.reason }}</td></tr>
+    <tr><th>Diagnosis</th><td class="pre diagnosis">{{ adm.encounter.diagnosis or "—" }}</td></tr>
+  </table>
 </div>
-<div class="doc-section">
-  <h3>Summary &amp; instructions</h3>
+<div class="section">
+  <h2>Summary &amp; instructions</h2>
   <p class="pre">{{ adm.discharge_summary or "—" }}</p>
-  {% if adm.encounter.follow_up_date %}<p style="margin-top:8px"><strong>Follow-up:</strong> {{ adm.encounter.follow_up_date|date("%A, %d %B %Y") }}</p>{% endif %}
+  {% if adm.encounter.follow_up_date %}<p style="margin-top:2.5mm"><span class="strong">Follow-up appointment:</span> {{ adm.encounter.follow_up_date|date("%A, %d %B %Y") }}</p>{% endif %}
 </div>
-{% with rxs=adm.encounter.prescriptions, rx_title="Medication during stay and on discharge" %}{% include "print/_prescriptions.html" %}{% endwith %}
-{% with orders=adm.encounter.lab_orders %}{% include "print/_labs.html" %}{% endwith %}
-<div class="doc-sign"><div>{{ adm.discharged_by.full_name if adm.discharged_by else "Discharging doctor" }}</div><div>Signature &amp; stamp</div></div>
+{{ d.medication(adm.encounter.prescriptions, "Medication during stay and on discharge") }}
+{{ d.lab_results(adm.encounter.lab_orders) }}
+{{ d.signoff(adm.discharged_by.full_name if adm.discharged_by else "", "Discharging doctor") }}
 {% endblock %}

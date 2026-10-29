@@ -11,6 +11,7 @@ from ..models import (
 )
 from ..security import require
 from ..services.audit import audit
+from ..services.documents import document
 from ..services.billing import charge, invoice_for, refresh_status
 from ..templating import flash, redirect, render
 from ..utils import blank, day_bounds, get_or_404, paginate, parse_date, parse_decimal, parse_int, today_local
@@ -58,7 +59,7 @@ def print_invoice(request: Request, invoice_id: int, user: User = Depends(requir
     inv = _invoice(db, invoice_id)
     audit(db, request, user, "invoice.printed", "invoice", inv.id)
     db.commit()
-    return render(request, "billing/print.html", inv=inv, patient=inv.patient)
+    return document(request, "print/invoice.html", inv.number or f"Invoice-{inv.id}", inv=inv, patient=inv.patient)
 
 
 @router.post("/patients/{patient_id}/invoice")

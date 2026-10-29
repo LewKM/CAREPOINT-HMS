@@ -1,0 +1,68 @@
+{# Sections shared by the clinical documents. #}
+
+{% macro vitals(v) %}
+{% set f = v.flags %}
+<div class="section keep">
+  <h2>Vital signs <span class="aside">{{ v.recorded_at|dt }}{% if v.recorded_by %} · {{ v.recorded_by.full_name }}{% endif %}</span></h2>
+  <table class="vitals"><tr>
+    <td class="{{ 'out' if 'temperature' in f }}"><span class="label">Temperature</span><span class="reading">{{ v.temperature if v.temperature is not none else "—" }}</span> <span class="unit">°C</span></td>
+    <td class="{{ 'out' if 'bp' in f }}"><span class="label">Blood pressure</span><span class="reading">{{ v.systolic or "—" }}/{{ v.diastolic or "—" }}</span> <span class="unit">mmHg</span></td>
+    <td class="{{ 'out' if 'pulse' in f }}"><span class="label">Pulse</span><span class="reading">{{ v.pulse or "—" }}</span> <span class="unit">bpm</span></td>
+    <td class="{{ 'out' if 'respiratory_rate' in f }}"><span class="label">Resp. rate</span><span class="reading">{{ v.respiratory_rate or "—" }}</span> <span class="unit">/min</span></td>
+    <td class="{{ 'out' if 'spo2' in f }}"><span class="label">SpO2</span><span class="reading">{{ v.spo2 or "—" }}</span> <span class="unit">%</span></td>
+    <td><span class="label">Weight · BMI</span><span class="reading">{{ v.weight_kg or "—" }}</span> <span class="unit">kg{% if v.bmi %} · {{ v.bmi }}{% endif %}</span></td>
+  </tr></table>
+  {% if f %}<p class="note" style="margin-top:1.5mm">Shaded readings are outside adult reference ranges.</p>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro medication(rxs, title="Medication") %}
+{% set live = rxs|rejectattr("status", "equalto", models.PrescriptionStatus.CANCELLED)|list %}
+{% if live %}
+<div class="section">
+  <h2>{{ title }}</h2>
+  <table class="grid">
+    <colgroup><col style="width:34%"><col style="width:12%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:25%"></colgroup>
+    <thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th class="num">Days</th><th class="num">Qty</th><th>Instructions</th></tr></thead>
+    <tbody>{% for rx in live %}{% for i in rx.items %}
+      <tr><td class="strong">{{ i.drug.label }}</td><td>{{ i.dose }}</td><td>{{ i.frequency }}</td>
+        <td class="num">{{ i.duration_days }}</td><td class="num">{{ i.quantity }}</td><td>{{ i.instructions or "—" }}</td></tr>
+    {% endfor %}{% endfor %}</tbody>
+  </table>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro lab_results(orders, title="Laboratory results", empty=None) %}
+{% set done = orders|selectattr("status", "equalto", models.LabStatus.COMPLETED)|list %}
+{% set waiting = orders|selectattr("status", "in", [models.LabStatus.ORDERED, models.LabStatus.COLLECTED])|list %}
+{% if done or empty %}
+<div class="section">
+  <h2>{{ title }}</h2>
+  {% if done %}
+  <table class="grid">
+    <colgroup><col style="width:30%"><col style="width:28%"><col style="width:20%"><col style="width:22%"></colgroup>
+    <thead><tr><th>Test</th><th>Result</th><th>Reference range</th><th>Released</th></tr></thead>
+    <tbody>{% for o in done %}
+      <tr class="{{ 'abnormal' if o.is_abnormal }}">
+        <td class="strong">{{ o.test.name }}<span class="sub">{{ o.test.code }} · {{ o.test.specimen }}</span></td>
+        <td><span class="{{ 'flag' if o.is_abnormal }}">{{ o.result_value }} {{ o.test.unit or "" }}</span>
+          {% if o.is_abnormal %}<span class="sub flag">Abnormal</span>{% endif %}
+          {% if o.result_notes %}<span class="sub">{{ o.result_notes }}</span>{% endif %}</td>
+        <td>{{ o.test.reference_range or "—" }}{% if o.test.reference_range and o.test.unit %} <span class="muted">{{ o.test.unit }}</span>{% endif %}</td>
+        <td>{{ o.completed_at|dt }}{% if o.performed_by %}<span class="sub">{{ o.performed_by.full_name }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table>
+  {% else %}<p class="muted">{{ empty }}</p>{% endif %}
+  {% if waiting %}<p class="note" style="margin-top:2mm">Still pending: {{ waiting|map(attribute="test.name")|join(", ") }}.</p>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro signoff(left_name, left_role, right_role="Signature & stamp") %}
+<table class="signoff"><tr>
+  <td><div class="line"><span class="name">{{ left_name }}</span><br>{{ left_role }}</div></td>
+  <td><div class="line"><span class="name">&nbsp;</span><br>{{ right_role }}</div></td>
+</tr></table>
+{% endmacro %}

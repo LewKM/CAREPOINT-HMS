@@ -7,6 +7,7 @@
 {% call m.patient_banner(patient, show_allergies=False) %}
   {{ m.badge(inv.status) }}
   <a class="btn" href="/billing/invoices/{{ inv.id }}/print" target="_blank">{{ m.icon("printer") }}Print</a>
+  <a class="btn" href="/billing/invoices/{{ inv.id }}/print?format=pdf" target="_blank">{{ m.icon("file-down") }}PDF</a>
 {% endcall %}
 <div class="stats">
   {{ m.stat("Total billed", inv.total|money, "receipt") }}

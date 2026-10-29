@@ -1,33 +1,51 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{% endblock %} · {{ settings.hospital_name }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ asset('css/app.css') }}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d7c74'/%3E%3Cpath d='M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z' fill='white'/%3E%3C/svg%3E">
-<style>body{background:#eef1f2;color:#111}</style>
-</head><body data-sprite="{{ sprite }}">
+{% if not pdf %}<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d7c74'/%3E%3Cpath d='M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z' fill='white'/%3E%3C/svg%3E">{% endif %}
+<link rel="stylesheet" href="{{ asset('css/print.css') }}">
+<style>@page { @bottom-left { content: {{ (settings.hospital_name ~ "  ·  " ~ self.doc_title()|striptags ~ "  ·  " ~ patient.full_name ~ "  ·  " ~ patient.mrn)|css_string }}; } }{% block page_css %}{% endblock %}</style>
+</head><body>
 {% import "_macros.html" as m with context %}
-<div class="no-print row" style="justify-content:center;padding:16px">
-  <a class="btn" href="{% block back %}/{% endblock %}">{{ m.icon("arrow-left") }}Back</a>
-  <button class="btn btn-primary" onclick="window.print()">{{ m.icon("printer") }}Print</button>
-</div>
-<div class="print-page">
-  <div class="doc-head">
-    <div class="doc-brand"><span class="mark">{{ m.icon("cross") }}</span>
-      <div><div style="font-size:18px;font-weight:700">{{ settings.hospital_name }}</div><div class="doc-title">{% block doc_title %}{% endblock %}</div></div></div>
-    <div class="doc-meta">{% block doc_meta %}{% endblock %}</div>
-  </div>
-  <dl class="doc-patient">
-    <div><dt>Patient</dt><dd>{{ patient.full_name }}</dd></div>
-    <div><dt>MRN</dt><dd class="mono">{{ patient.mrn }}</dd></div>
-    <div><dt>Sex / age</dt><dd>{{ patient.gender.label }}, {{ patient.age }} y</dd></div>
-    <div><dt>Date of birth</dt><dd>{{ patient.date_of_birth|date }}</dd></div>
-    <div><dt>Phone</dt><dd>{{ patient.phone or "—" }}</dd></div>
-    <div><dt>Blood group</dt><dd>{{ patient.blood_group or "—" }}</dd></div>
-    <div><dt>Cover</dt><dd>{{ patient.insurance_provider or "Cash" }}</dd></div>
-    {% if can(user, "patients.clinical") %}<div><dt>Allergies</dt><dd class="{{ 'doc-flag' if patient.allergies }}">{{ patient.allergies or "None known" }}</dd></div>{% endif %}
-  </dl>
+{% if not pdf %}
+<nav class="toolbar">
+  <a href="{% block back %}/{% endblock %}">{{ m.icon("arrow-left") }}Back</a>
+  <a href="{{ query(request, format='pdf') }}" target="_blank" rel="noopener">{{ m.icon("file-down") }}Download PDF</a>
+  <button class="primary" type="button" onclick="window.print()">{{ m.icon("printer") }}Print</button>
+</nav>
+{% endif %}
+<main class="sheet">
+  {% block stamp %}{% endblock %}
+  <table class="letterhead"><tr>
+    <td class="mark"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0d7c74"/><path d="M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z" fill="#fff"/></svg></td>
+    <td><div class="hospital">{{ settings.hospital_name }}</div><div class="hospital-sub">{% block subline %}{{ settings.app_name }}{% endblock %}</div></td>
+    <td class="doc-type" style="width:72mm">
+      <h1>{% block doc_title %}{% endblock %}</h1>
+      <div class="ref">{% block doc_meta %}{% endblock %}</div>
+      {% block status %}{% endblock %}
+    </td>
+  </tr></table>
+
+  {% block patient %}
+  {% set clinical = can(user, "patients.clinical") %}
+  <table class="patient">
+    <tr>
+      <td><span class="label">Patient</span><span class="value">{{ patient.full_name }}</span></td>
+      <td><span class="label">MRN</span><span class="value">{{ patient.mrn }}</span></td>
+      <td><span class="label">Sex · age</span><span class="value">{{ patient.gender.label }} · {{ patient.age }} y</span></td>
+      <td><span class="label">Date of birth</span><span class="value">{{ patient.date_of_birth|date }}</span></td>
+    </tr>
+    <tr>
+      <td><span class="label">Phone</span><span class="value">{{ patient.phone or "—" }}</span></td>
+      <td><span class="label">Blood group</span><span class="value">{{ patient.blood_group or "—" }}</span></td>
+      <td><span class="label">Cover</span><span class="value">{{ patient.insurance_provider or "Cash" }}</span></td>
+      {% if clinical %}<td><span class="label">Allergies</span><span class="value {{ 'flag' if patient.allergies }}">{{ patient.allergies or "None known" }}</span></td>
+      {% else %}<td><span class="label">ID number</span><span class="value">{{ patient.national_id or "—" }}</span></td>{% endif %}
+    </tr>
+  </table>
+  {% endblock %}
+
   {% block content %}{% endblock %}
-  <p class="doc-foot">Printed {{ now()|dt }} by {{ user.full_name }} · Confidential medical record · {{ settings.app_name }}</p>
-</div>
+
+  <p class="closing">Printed {{ now()|dt }} by {{ user.full_name }} · {% block closing %}Confidential medical record. Handle in line with patient privacy policy.{% endblock %}</p>
+</main>
 </body></html>

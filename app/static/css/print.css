@@ -1,0 +1,138 @@
+/* CarePoint documents — A4, shared by the browser print preview and the WeasyPrint PDF renderer.
+   Layout is tables and blocks only (no grid, no CSS variables) so both engines lay it out identically.
+   Page: 210 × 297 mm, margins 16 / 15 / 20 mm → a 180 mm wide text block. */
+
+@font-face { font-family: "Inter"; font-weight: 400; src: url("/static/fonts/inter-400.woff2") format("woff2"), url("/static/fonts/inter-400.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 500; src: url("/static/fonts/inter-500.woff2") format("woff2"), url("/static/fonts/inter-500.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 600; src: url("/static/fonts/inter-600.woff2") format("woff2"), url("/static/fonts/inter-600.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 700; src: url("/static/fonts/inter-700.woff2") format("woff2"), url("/static/fonts/inter-700.woff") format("woff"); }
+
+@page {
+  size: A4;
+  margin: 16mm 15mm 20mm 15mm;
+  @bottom-left { font: 400 7.5pt "Inter", "DejaVu Sans", sans-serif; color: #7a8a90; vertical-align: top; padding-top: 4mm; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 500 7.5pt "Inter", "DejaVu Sans", sans-serif; color: #7a8a90; vertical-align: top; padding-top: 4mm; }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0; background: #e9eef0; color: #14232a;
+  font: 400 9.5pt/1.45 "Inter", "DejaVu Sans", "Segoe UI", sans-serif;
+}
+h1, h2, h3, p { margin: 0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th, td { text-align: left; vertical-align: top; padding: 0; overflow-wrap: anywhere; word-break: break-word; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.muted { color: #66777e; }
+.strong { font-weight: 600; }
+.pre { white-space: pre-wrap; }
+.flag { color: #b4233c; font-weight: 700; }
+
+/* ------------------------------------------------ screen preview: an A4 sheet with a toolbar */
+.toolbar {
+  position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; gap: 8px; padding: 12px 16px;
+  background: rgba(233, 238, 240, .92); border-bottom: 1px solid #d5dee2;
+}
+.toolbar a, .toolbar button {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px; border-radius: 9px;
+  border: 1px solid #c9d4d8; background: #fff; color: #14232a; font: 600 13px "Inter", sans-serif; text-decoration: none; cursor: pointer;
+}
+.toolbar .primary { background: #0d7c74; border-color: #0d7c74; color: #fff; }
+.toolbar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sheet {
+  position: relative; width: 210mm; min-height: 297mm; margin: 24px auto 40px; padding: 16mm 15mm 20mm;
+  background: #fff; box-shadow: 0 1px 3px rgba(16, 38, 46, .08), 0 12px 32px rgba(16, 38, 46, .12);
+}
+@media screen and (max-width: 860px) {
+  .sheet { width: auto; min-height: 0; margin: 0; padding: 20px 16px 28px; box-shadow: none; }
+}
+@media print {
+  body { background: #fff; }
+  .toolbar { display: none; }
+  .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+}
+
+/* ------------------------------------------------ letterhead */
+.letterhead { border-bottom: 2pt solid #0d7c74; padding-bottom: 4mm; margin-bottom: 5mm; }
+.letterhead td { vertical-align: middle; }
+.mark { width: 11mm; }
+.mark svg { display: block; width: 10mm; height: 10mm; }
+.hospital { font-size: 13pt; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+.hospital-sub { font-size: 7.5pt; color: #66777e; letter-spacing: .02em; }
+.doc-type { text-align: right; }
+.doc-type h1 { font-size: 15pt; font-weight: 700; color: #0d7c74; letter-spacing: -.01em; line-height: 1.15; }
+.doc-type .ref { font-size: 8pt; color: #4d5f66; margin-top: 1mm; line-height: 1.5; }
+.status { display: inline-block; margin-top: 1.5mm; padding: .6mm 2.4mm; border-radius: 2mm; font-size: 7pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: #e3f4f2; color: #0a5f59; }
+.status.warn { background: #fdf1e2; color: #9a5205; }
+.status.danger { background: #fce9ec; color: #b4233c; }
+.status.muted { background: #edf1f3; color: #5b6d74; }
+
+/* ------------------------------------------------ patient strip */
+.patient { background: #f3f7f7; border: .5pt solid #dce6e8; border-radius: 2mm; margin-bottom: 6mm; }
+.patient td { padding: 2.2mm 3mm; }
+.patient tr + tr td { padding-top: 0; }
+.label { display: block; font-size: 6.5pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6f8188; margin-bottom: .4mm; }
+.patient .value { font-weight: 600; font-size: 9pt; }
+
+/* ------------------------------------------------ sections */
+.section { margin-bottom: 6mm; }
+.section h2 {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #0d7c74;
+  padding-bottom: 1.4mm; margin-bottom: 2.5mm; border-bottom: .5pt solid #cfdcdf;
+  break-after: avoid; page-break-after: avoid;
+}
+.section h2 .aside { float: right; letter-spacing: .02em; text-transform: none; font-weight: 500; color: #66777e; }
+.keep { break-inside: avoid; page-break-inside: avoid; }
+
+/* label → value rows */
+.kv th { width: 40mm; padding: 1.3mm 4mm 1.3mm 0; font-size: 8pt; font-weight: 500; color: #66777e; }
+.kv td { padding: 1.3mm 0; }
+.kv tr { break-inside: avoid; page-break-inside: avoid; }
+.kv .diagnosis { font-weight: 700; font-size: 10pt; }
+
+/* data tables */
+.grid thead { display: table-header-group; }
+.grid th {
+  font-size: 6.8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #55686f;
+  background: #f1f5f6; padding: 1.8mm 2mm; border-bottom: .5pt solid #cfdcdf;
+}
+.grid td { padding: 2mm; border-bottom: .5pt solid #e4ecee; }
+.grid tr { break-inside: avoid; page-break-inside: avoid; }
+.grid .sub { display: block; font-size: 7.5pt; color: #6f8188; margin-top: .3mm; }
+.grid tr.abnormal td { background: #fdf3f5; }
+
+/* vitals */
+.vitals td { border: .5pt solid #dce6e8; padding: 2mm 2.5mm; }
+.vitals .reading { font-size: 11pt; font-weight: 700; }
+.vitals .unit { font-size: 7.5pt; color: #6f8188; font-weight: 500; }
+.vitals td.out { background: #fdf3f5; border-color: #f0c7cf; }
+.vitals td.out .reading { color: #b4233c; }
+
+/* money */
+.totals { width: 78mm; margin-left: auto; margin-top: 3mm; }
+.totals td { padding: 1.4mm 2mm; }
+.totals tr.grand td { border-top: 1pt solid #14232a; font-weight: 700; font-size: 10.5pt; padding-top: 2mm; }
+.totals tr.due td { background: #0d7c74; color: #fff; font-weight: 700; font-size: 10.5pt; }
+.totals tr.due.settled td { background: #e3f4f2; color: #0a5f59; }
+
+/* notes / callouts */
+.callout { border: .5pt solid #f0c7cf; background: #fdf3f5; color: #8f1d31; border-radius: 1.5mm; padding: 2.2mm 3mm; font-size: 8.5pt; margin-bottom: 5mm; }
+.note { font-size: 8pt; color: #66777e; }
+
+/* sign-off */
+.signoff { margin-top: 12mm; break-inside: avoid; page-break-inside: avoid; }
+.signoff td { padding: 0 6mm 0 0; }
+.signoff td + td { padding: 0 0 0 6mm; }
+.signoff .line { border-top: .6pt solid #6f8188; padding-top: 1.5mm; font-size: 8pt; color: #4d5f66; }
+.signoff .name { font-weight: 600; color: #14232a; }
+.closing { margin-top: 8mm; font-size: 7.5pt; color: #8a9a9f; text-align: center; }
+
+/* PAID / VOID watermark on the first page (a void invoice also carries a banner on every page) */
+.stamp {
+  position: fixed; top: 105mm; left: 0; right: 0; text-align: center; pointer-events: none;
+  font: 700 64pt "Inter", sans-serif; letter-spacing: .1em; transform: rotate(-24deg); opacity: .09;
+}
+.stamp.void { color: #b4233c; }
+.stamp.paid { color: #0d7c74; }
+@media screen { .stamp { position: absolute; } }

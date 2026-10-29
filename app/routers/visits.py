@@ -14,6 +14,7 @@ from ..permissions import can
 from ..security import require
 from ..services.audit import audit
 from ..services.billing import charge
+from ..services.documents import document
 from ..templating import back, flash, redirect, render
 from ..utils import blank, day_bounds, get_or_404, parse_date, parse_decimal, parse_int
 from .appointments import open_visit, start_visit
@@ -145,7 +146,7 @@ def summary(request: Request, encounter_id: int, user: User = Depends(require("p
     enc = _full_record(db, encounter_id)
     audit(db, request, user, "visit.printed", "encounter", enc.id, "visit summary")
     db.commit()
-    return render(request, "print/visit_summary.html", enc=enc, patient=enc.patient)
+    return document(request, "print/visit_summary.html", f"Visit-summary-{enc.patient.mrn}-{enc.id}", enc=enc, patient=enc.patient)
 
 
 @router.get("/{encounter_id}/lab-report")
@@ -155,7 +156,8 @@ def lab_report(request: Request, encounter_id: int, order: int | None = None,
     audit(db, request, user, "visit.printed", "encounter", enc.id, "lab report")
     db.commit()
     back_to = f"/lab/orders/{order}" if order and not can(user, "patients.clinical") else f"/visits/{enc.id}#labs"
-    return render(request, "print/lab_report.html", enc=enc, patient=enc.patient, back_to=back_to)
+    return document(request, "print/lab_report.html", f"Lab-report-{enc.patient.mrn}-{enc.id}",
+                    enc=enc, patient=enc.patient, back_to=back_to)
 
 
 @router.post("/{encounter_id}/vitals")

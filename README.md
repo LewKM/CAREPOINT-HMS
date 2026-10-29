@@ -81,7 +81,18 @@ The cashier only collects payments. Manual charges and credits are available for
 - **Ctrl+K** (⌘K) opens the command palette: every page and action the role may use, plus patient search by name, MRN, phone or ID. `/` jumps to the patient search box.
 - Queues update themselves every 20–30 s: the visit queue, every dashboard, the pharmacy queue, the lab worklist and appointments. New arrivals are highlighted, and a background tab gets a ● in its title. A region the user is typing in is left alone.
 - Waiting times turn amber after 30 minutes and red after an hour.
-- Printable documents: **visit summary** (vitals, notes, diagnosis, medication, results), **lab report** (doctors and the lab) and **discharge summary**. Each print is recorded in the audit log, like any other view.
+- Documents: **visit summary**, **lab report**, **discharge summary** and **invoice / receipt**. Each opens as an A4 preview with **Print** and **Download PDF**, and every print or download is recorded in the audit log.
+
+## Documents & PDF
+
+Each document is one template in `templates/print/`, styled by `static/css/print.css`. Add `?format=pdf` to any document URL and `services/documents.py` renders the same HTML to PDF with WeasyPrint.
+
+- **Page:** A4 (210 × 297 mm), margins 16 / 15 / 20 mm. Every page carries a footer with the hospital, document type, patient and MRN, plus "Page n of N".
+- **Long documents:** table headers repeat on each page, and rows, vitals and signature blocks never split across a page break.
+- **Paid / void:** a paid receipt carries a PAID watermark. A void invoice is marked VOID, with "VOID — NOT VALID FOR PAYMENT" in the top margin of every page.
+- **Same output both ways:** the stylesheet uses only tables and blocks, so the browser's Print → Save as PDF matches the server PDF.
+- **No network:** fonts (Inter) are self-hosted in `static/fonts/`, and the renderer refuses any URL outside `/static/`, so a PDF never waits on the internet.
+- **System libraries:** WeasyPrint needs Pango. The Docker images install it; for the local `.venv`, install `libpango-1.0-0 libpangoft2-1.0-0` with apt.
 
 ## Performance
 
@@ -101,10 +112,10 @@ app/
   permissions.py    role → capability matrix
   security.py       passwords, sessions, CSRF, require()
   templating.py     Jinja setup, filters, sidebar nav
-  services/         billing (invoice_for/charge), audit
+  services/         billing (invoice_for/charge), audit, documents (A4 preview / PDF)
   routers/          auth, dashboard, patients, appointments, visits, wards, pharmacy, lab, billing, admin
-  templates/        one folder per module; _macros.html holds shared components, print/ the printable documents
-  static/           app.css (design tokens + components), app.js (progressive enhancement), icons.svg (sprite)
+  templates/        one folder per module; _macros.html holds shared components, print/ the A4 documents
+  static/           app.css (design tokens + components), print.css (A4 documents), app.js, icons.svg (sprite), fonts/
 alembic/            migrations — `alembic revision --autogenerate -m "…"` after model changes
 scripts/            seed.py, dev.sh, build_icons.py
 ```

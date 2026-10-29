@@ -1,10 +1,15 @@
 {% extends "print/base.html" %}
+{% import "print/_blocks.html" as d with context %}
 {% block title %}Lab report · {{ patient.full_name }}{% endblock %}
 {% block back %}{{ back_to }}{% endblock %}
+{% block subline %}Laboratory{% endblock %}
 {% block doc_title %}Laboratory report{% endblock %}
-{% block doc_meta %}Visit #{{ enc.id }}<br>{{ enc.checked_in_at|date }}<br>Requested by {{ enc.doctor.display_name if enc.doctor else "—" }}{% endblock %}
+{% block doc_meta %}Visit #{{ enc.id }} · {{ enc.checked_in_at|date }}<br>Requested by {{ enc.doctor.full_name if enc.doctor else "—" }}{% endblock %}
 {% block content %}
-{% with orders=enc.lab_orders %}{% include "print/_labs.html" %}{% endwith %}
-{% if not enc.lab_orders|selectattr("status", "equalto", models.LabStatus.COMPLETED)|list %}<p>No results have been released for this visit yet.</p>{% endif %}
-<div class="doc-sign"><div>Laboratory technologist</div><div>Verified by</div></div>
+{% set abnormal = enc.lab_orders|selectattr("is_abnormal")|selectattr("status", "equalto", models.LabStatus.COMPLETED)|list %}
+{% if abnormal %}<div class="callout"><strong>{{ abnormal|length }} abnormal result{{ "s" if abnormal|length != 1 }}</strong> — {{ abnormal|map(attribute="test.name")|join(", ") }}.</div>{% endif %}
+{{ d.lab_results(enc.lab_orders, "Results", empty="No results have been released for this visit yet.") }}
+{% set notes = enc.lab_orders|selectattr("clinical_notes")|map(attribute="clinical_notes")|unique|list %}
+{% if notes %}<div class="section keep"><h2>Clinical notes from the requester</h2><p class="pre">{{ notes|join("\n") }}</p></div>{% endif %}
+{{ d.signoff("", "Laboratory technologist", "Verified by") }}
 {% endblock %}
