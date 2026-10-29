@@ -1,0 +1,34 @@
+{% extends "print/base.html" %}
+{% block title %}Visit summary · {{ patient.full_name }}{% endblock %}
+{% block back %}/visits/{{ enc.id }}{% endblock %}
+{% block doc_title %}Visit summary{% endblock %}
+{% block doc_meta %}Visit #{{ enc.id }}<br>{{ enc.checked_in_at|dt }}<br>{{ enc.department.name }}{% endblock %}
+{% block content %}
+{% if enc.vitals %}{% set v = enc.vitals[0] %}
+<div class="doc-section">
+  <h3>Vitals · {{ v.recorded_at|time }}</h3>
+  <table><tbody><tr>
+    <td>Temp <strong>{{ v.temperature or "—" }}</strong> °C</td>
+    <td>BP <strong>{{ v.systolic or "—" }}/{{ v.diastolic or "—" }}</strong></td>
+    <td>Pulse <strong>{{ v.pulse or "—" }}</strong></td>
+    <td>RR <strong>{{ v.respiratory_rate or "—" }}</strong></td>
+    <td>SpO₂ <strong>{{ v.spo2 or "—" }}</strong>%</td>
+    <td>Weight <strong>{{ v.weight_kg or "—" }}</strong> kg</td>
+  </tr></tbody></table>
+</div>
+{% endif %}
+<div class="doc-section">
+  <h3>Consultation</h3>
+  <dl class="kv">
+    <dt>Presenting complaint</dt><dd class="pre">{{ enc.chief_complaint or "—" }}</dd>
+    {% if enc.history %}<dt>History</dt><dd class="pre">{{ enc.history }}</dd>{% endif %}
+    {% if enc.examination %}<dt>Examination</dt><dd class="pre">{{ enc.examination }}</dd>{% endif %}
+    <dt>Diagnosis</dt><dd class="pre strong">{{ enc.diagnosis or "—" }}</dd>
+    {% if enc.treatment_plan %}<dt>Plan &amp; advice</dt><dd class="pre">{{ enc.treatment_plan }}</dd>{% endif %}
+    {% if enc.follow_up_date %}<dt>Follow-up</dt><dd class="strong">{{ enc.follow_up_date|date("%A, %d %B %Y") }}</dd>{% endif %}
+  </dl>
+</div>
+{% with rxs=enc.prescriptions %}{% include "print/_prescriptions.html" %}{% endwith %}
+{% with orders=enc.lab_orders %}{% include "print/_labs.html" %}{% endwith %}
+<div class="doc-sign"><div>{{ enc.doctor.full_name if enc.doctor else "Attending clinician" }}</div><div>Signature &amp; stamp</div></div>
+{% endblock %}

@@ -17,7 +17,7 @@
     <div class="table-wrap"><table>
       <thead><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Status</th><th></th></tr></thead>
       <tbody>{% for a in appointments %}
-        <tr><td class="strong nowrap">{{ a.scheduled_at|time }}</td><td>{{ m.patient_cell(a.patient) }}</td><td>{{ a.doctor.display_name }}</td><td>{{ m.badge(a.status) }}</td>
+        <tr data-key="a{{ a.id }}-{{ a.status.value }}"><td class="strong nowrap">{{ a.scheduled_at|time }}</td><td>{{ m.patient_cell(a.patient) }}</td><td>{{ a.doctor.display_name }}</td><td>{{ m.badge(a.status) }}</td>
           <td class="right">{% if a.status == models.AppointmentStatus.SCHEDULED %}{{ m.post_button("/appointments/" ~ a.id ~ "/check-in", "Check in", "log-in", "btn btn-sm btn-primary") }}{% endif %}</td></tr>
       {% endfor %}</tbody></table></div>
     {% else %}{{ m.empty("No appointments booked for today.", "calendar") }}{% endif %}

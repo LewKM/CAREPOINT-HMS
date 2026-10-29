@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..db import get_db
 from ..models import (
-    Admission, AdmissionStatus, Bed, BedStatus, ChargeCategory, ClinicalNote, NoteType, Role, User, Ward, utcnow,
+    Admission, AdmissionStatus, Bed, BedStatus, ChargeCategory, ClinicalNote, Encounter, LabOrder, NoteType,
+    Prescription, PrescriptionItem, Role, User, Ward, utcnow,
 )
 from ..permissions import can
 from ..security import require
@@ -75,6 +76,26 @@ def admission(request: Request, admission_id: int, user: User = Depends(require(
     audit(db, request, user, "admission.viewed", "admission", adm.id)
     db.commit()
     return render(request, "wards/admission.html", **ctx)
+
+
+@router.get("/admissions/{admission_id}/discharge-summary")
+def discharge_summary(request: Request, admission_id: int, user: User = Depends(require("patients.clinical")),
+                      db: Session = Depends(get_db)):
+    enc = joinedload(Admission.encounter)
+    adm = db.scalar(select(Admission).options(
+        joinedload(Admission.patient), joinedload(Admission.bed).joinedload(Bed.ward),
+        joinedload(Admission.admitting_doctor), joinedload(Admission.discharged_by),
+        enc.joinedload(Encounter.prescriptions).joinedload(Prescription.items).joinedload(PrescriptionItem.drug),
+        enc.joinedload(Encounter.lab_orders).joinedload(LabOrder.test),
+        enc.joinedload(Encounter.lab_orders).joinedload(LabOrder.performed_by),
+    ).where(Admission.id == admission_id))
+    if not adm:
+        raise HTTPException(404)
+    if adm.status == AdmissionStatus.ADMITTED:
+        raise HTTPException(409, "The discharge summary is available once the patient has been discharged.")
+    audit(db, request, user, "admission.printed", "admission", adm.id, "discharge summary")
+    db.commit()
+    return render(request, "print/discharge_summary.html", adm=adm, patient=adm.patient)
 
 
 def _current(db: Session, admission_id: int) -> Admission:

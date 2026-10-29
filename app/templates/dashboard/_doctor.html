@@ -14,10 +14,10 @@
         <thead><tr><th>Patient</th><th>Priority</th><th>Status</th><th>Waiting</th><th></th></tr></thead>
         <tbody>
         {% for e in queue %}
-          <tr data-href="/visits/{{ e.id }}" class="row-link">
+          <tr data-key="v{{ e.id }}" data-href="/visits/{{ e.id }}" class="row-link">
             <td>{{ m.patient_cell(e.patient, link=False) }}<div class="sub" style="margin-left:42px">{{ e.chief_complaint or "" }}</div></td>
             <td>{{ m.badge(e.priority) }}</td><td>{{ m.badge(e.status) }}</td>
-            <td class="nowrap muted">{{ e.checked_in_at|ago }}</td>
+            <td class="nowrap muted"><span class="wait {{ e.checked_in_at|wait_tone if e.status != models.EncounterStatus.IN_PROGRESS }}">{{ e.checked_in_at|ago }}</span></td>
             <td class="right"><a class="btn btn-sm btn-primary" href="/visits/{{ e.id }}">Open</a></td>
           </tr>
         {% endfor %}
@@ -38,7 +38,7 @@
       <div class="card-head"><h2>{{ m.icon("flask-conical") }}New lab results</h2></div>
       {% if results %}
       <ul class="list">{% for o in results %}
-        <li><div class="grow"><div class="strong">{{ o.test.name }} {% if o.is_abnormal %}<span class="badge tone-danger">Abnormal</span>{% endif %}</div>
+        <li data-key="r{{ o.id }}"><div class="grow"><div class="strong">{{ o.test.name }} {% if o.is_abnormal %}<span class="badge tone-danger">Abnormal</span>{% endif %}</div>
           <div class="small muted">{{ o.patient.full_name }} · {{ o.completed_at|ago }}</div>
           <div class="small">{{ o.result_value|truncate(80) }}</div></div>
           <a class="btn btn-sm" href="/visits/{{ o.encounter_id }}#labs">View</a></li>

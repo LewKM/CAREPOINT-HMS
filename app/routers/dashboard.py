@@ -41,12 +41,28 @@ def _ward_census(db):
     return [{"ward": w, "beds": total, "occupied": occ} for w, total, occ in rows]
 
 
-def _outstanding(db) -> Decimal:
-    billed = db.scalar(select(func.coalesce(func.sum(InvoiceItem.unit_price * InvoiceItem.quantity), 0))
-                       .join(Invoice).where(Invoice.status.in_([InvoiceStatus.OPEN, InvoiceStatus.PARTIALLY_PAID])))
-    paid = db.scalar(select(func.coalesce(func.sum(Payment.amount), 0))
-                     .join(Invoice).where(Invoice.status.in_([InvoiceStatus.OPEN, InvoiceStatus.PARTIALLY_PAID])))
-    return Decimal(billed) - Decimal(paid)
+def _figures(db, **subqueries) -> dict:
+    """Run several scalar subqueries in ONE round trip — the database is remote, so each trip costs more than the query."""
+    row = db.execute(select(*(q.label(k) for k, q in subqueries.items()))).one()
+    return row._asdict()
+
+
+def _count(entity, *where):
+    return select(func.count(entity)).where(*where).scalar_subquery()
+
+
+def _sum(column, *where):
+    return select(func.coalesce(func.sum(column), 0)).where(*where).scalar_subquery()
+
+
+_UNPAID = Invoice.status.in_([InvoiceStatus.OPEN, InvoiceStatus.PARTIALLY_PAID])
+
+
+def _outstanding():
+    billed = (select(func.coalesce(func.sum(InvoiceItem.unit_price * InvoiceItem.quantity), 0))
+              .join(Invoice).where(_UNPAID).scalar_subquery())
+    paid = select(func.coalesce(func.sum(Payment.amount), 0)).join(Invoice).where(_UNPAID).scalar_subquery()
+    return billed - paid
 
 
 def admin_ctx(db, start, end, user):
@@ -65,17 +81,20 @@ def admin_ctx(db, start, end, user):
         .group_by(InvoiceItem.category).order_by(func.sum(InvoiceItem.unit_price * InvoiceItem.quantity).desc())
     ).all()
     return dict(
-        patients_total=db.scalar(select(func.count(Patient.id))),
-        patients_today=db.scalar(select(func.count(Patient.id)).where(Patient.created_at >= start, Patient.created_at < end)),
-        appointments_today=db.scalar(select(func.count(Appointment.id)).where(Appointment.scheduled_at >= start, Appointment.scheduled_at < end)),
-        visits_active=db.scalar(select(func.count(Encounter.id)).where(Encounter.status.in_(ACTIVE))),
+        **_figures(
+            db,
+            patients_total=_count(Patient.id),
+            patients_today=_count(Patient.id, Patient.created_at >= start, Patient.created_at < end),
+            appointments_today=_count(Appointment.id, Appointment.scheduled_at >= start, Appointment.scheduled_at < end),
+            visits_active=_count(Encounter.id, Encounter.status.in_(ACTIVE)),
+            collected_today=_sum(Payment.amount, Payment.received_at >= start, Payment.received_at < end),
+            collected_month=_sum(Payment.amount, Payment.received_at >= month_start),
+            outstanding=_outstanding(),
+            low_stock=_count(Drug.id, Drug.is_active, Drug.stock_quantity <= Drug.reorder_level),
+        ),
         beds_total=sum(c["beds"] for c in census),
         beds_occupied=sum(c["occupied"] for c in census),
         census=census,
-        collected_today=db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.received_at >= start, Payment.received_at < end)),
-        collected_month=db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.received_at >= month_start)),
-        outstanding=_outstanding(db),
-        low_stock=db.scalar(select(func.count(Drug.id)).where(Drug.is_active, Drug.stock_quantity <= Drug.reorder_level)),
         staff=staff,
         dept_load=dept_load,
         revenue_by_cat=revenue_by_cat,
@@ -146,8 +165,11 @@ def lab_ctx(db, start, end, user):
         worklist=sorted(open_orders, key=lambda o: (LAB_PRIORITY_RANK[o.priority], o.created_at))[:12],
         to_collect=len([o for o in open_orders if o.status == LabStatus.ORDERED]),
         in_process=len([o for o in open_orders if o.status == LabStatus.COLLECTED]),
-        done_today=db.scalar(select(func.count(LabOrder.id)).where(LabOrder.completed_at >= start, LabOrder.completed_at < end)),
-        abnormal_today=db.scalar(select(func.count(LabOrder.id)).where(LabOrder.completed_at >= start, LabOrder.completed_at < end, LabOrder.is_abnormal)),
+        **_figures(
+            db,
+            done_today=_count(LabOrder.id, LabOrder.completed_at >= start, LabOrder.completed_at < end),
+            abnormal_today=_count(LabOrder.id, LabOrder.completed_at >= start, LabOrder.completed_at < end, LabOrder.is_abnormal),
+        ),
     )
 
 
@@ -160,10 +182,12 @@ def cashier_ctx(db, start, end, user):
     return dict(
         by_method=by_method,
         collected_today=sum((r[1] for r in by_method), Decimal(0)),
-        my_today=db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(
-            Payment.received_by_id == user.id, Payment.received_at >= start, Payment.received_at < end)),
+        **_figures(
+            db,
+            my_today=_sum(Payment.amount, Payment.received_by_id == user.id, Payment.received_at >= start, Payment.received_at < end),
+            outstanding=_outstanding(),
+        ),
         open_invoices=[i for i in open_invoices if i.balance > 0],
-        outstanding=_outstanding(db),
     )
 
 

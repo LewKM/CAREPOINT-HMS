@@ -22,12 +22,13 @@
       </select>
     </form>
   </div>
+  <div id="appts" data-live="30">
   {% if appointments %}
   <div class="table-wrap"><table>
     <thead><tr><th>Time</th><th>Patient</th><th>Doctor</th><th>Reason</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for a in appointments %}
-      <tr>
+      <tr data-key="a{{ a.id }}-{{ a.status.value }}">
         <td class="strong nowrap">{{ a.scheduled_at|time }}<div class="sub">{{ a.duration_minutes }} min</div></td>
         <td>{{ m.patient_cell(a.patient) }}</td>
         <td>{{ a.doctor.display_name }}<div class="sub">{{ a.department.name }}</div></td>
@@ -53,5 +54,6 @@
       {% if can(user, "appointments.manage") %}<a class="btn" href="/appointments/new">{{ m.icon("calendar-plus") }}Book one</a>{% endif %}
     {% endcall %}
   {% endif %}
+  </div>
 </div>
 {% endblock %}

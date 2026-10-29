@@ -108,17 +108,24 @@ def create(request: Request, patient_id: Annotated[str, Form()] = "", department
     return redirect("/visits")
 
 
-@router.get("/{encounter_id}")
-def show(request: Request, encounter_id: int, user: User = Depends(require("patients.clinical")),
-         db: Session = Depends(get_db)):
+def _full_record(db: Session, encounter_id: int) -> Encounter:
+    """The visit with everything a clinician reads, loaded in one query."""
     enc = db.scalar(select(Encounter).options(
         joinedload(Encounter.patient), joinedload(Encounter.doctor), joinedload(Encounter.department),
         joinedload(Encounter.vitals).joinedload(Vitals.recorded_by),
         joinedload(Encounter.prescriptions).joinedload(Prescription.items).joinedload(PrescriptionItem.drug),
         joinedload(Encounter.lab_orders).joinedload(LabOrder.test),
+        joinedload(Encounter.lab_orders).joinedload(LabOrder.performed_by),
         joinedload(Encounter.admission)).where(Encounter.id == encounter_id))
     if not enc:
         raise HTTPException(404)
+    return enc
+
+
+@router.get("/{encounter_id}")
+def show(request: Request, encounter_id: int, user: User = Depends(require("patients.clinical")),
+         db: Session = Depends(get_db)):
+    enc = _full_record(db, encounter_id)
     ctx = dict(enc=enc, patient=enc.patient)
     if can(user, "prescriptions.write"):
         ctx["drugs"] = db.scalars(select(Drug).where(Drug.is_active).order_by(Drug.name)).all()
@@ -130,6 +137,25 @@ def show(request: Request, encounter_id: int, user: User = Depends(require("pati
     audit(db, request, user, "visit.viewed", "encounter", enc.id)
     db.commit()
     return render(request, "visits/show.html", **ctx)
+
+
+@router.get("/{encounter_id}/summary")
+def summary(request: Request, encounter_id: int, user: User = Depends(require("patients.clinical")),
+            db: Session = Depends(get_db)):
+    enc = _full_record(db, encounter_id)
+    audit(db, request, user, "visit.printed", "encounter", enc.id, "visit summary")
+    db.commit()
+    return render(request, "print/visit_summary.html", enc=enc, patient=enc.patient)
+
+
+@router.get("/{encounter_id}/lab-report")
+def lab_report(request: Request, encounter_id: int, order: int | None = None,
+               user: User = Depends(require("patients.clinical", "lab.view")), db: Session = Depends(get_db)):
+    enc = _full_record(db, encounter_id)
+    audit(db, request, user, "visit.printed", "encounter", enc.id, "lab report")
+    db.commit()
+    back_to = f"/lab/orders/{order}" if order and not can(user, "patients.clinical") else f"/visits/{enc.id}#labs"
+    return render(request, "print/lab_report.html", enc=enc, patient=enc.patient, back_to=back_to)
 
 
 @router.post("/{encounter_id}/vitals")

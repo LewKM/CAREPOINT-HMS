@@ -12,6 +12,14 @@ cp .env.example .env              # set DATABASE_URL and SECRET_KEY
 ./scripts/dev.sh                  # http://127.0.0.1:8010
 ```
 
+Or in Docker:
+
+```bash
+./bin/dev-up                     # dev stack on http://localhost:8010 (reloads on code changes)
+RUN_SEEDS=true ./bin/dev-up      # also seed reference data + demo accounts
+docker compose up -d --build     # production, behind caddy-proxy on the shared 'web' network
+```
+
 Without `--demo`, the seed creates only the reference data and one administrator with a random temporary password, which must be changed at first sign-in. Use that mode for production.
 
 Demo accounts all use the password `CarePoint#2026`:
@@ -68,6 +76,22 @@ The cashier only collects payments. Manual charges and credits are available for
 - Overlapping appointments for the same doctor are refused. A patient can't have two open visits. Beds and drug stock are row-locked when assigned or dispensed.
 - Vitals outside adult reference ranges are flagged red. Allergies appear on every clinical screen and on the prescribing and dispensing forms.
 
+## Working day
+
+- **Ctrl+K** (⌘K) opens the command palette: every page and action the role may use, plus patient search by name, MRN, phone or ID. `/` jumps to the patient search box.
+- Queues update themselves every 20–30 s: the visit queue, every dashboard, the pharmacy queue, the lab worklist and appointments. New arrivals are highlighted, and a background tab gets a ● in its title. A region the user is typing in is left alone.
+- Waiting times turn amber after 30 minutes and red after an hour.
+- Printable documents: **visit summary** (vitals, notes, diagnosis, medication, results), **lab report** (doctors and the lab) and **discharge summary**. Each print is recorded in the audit log, like any other view.
+
+## Performance
+
+The database is remote (Neon), so each round trip costs far more than the query itself. The app is built around that:
+
+- Page loads (GET) run in autocommit, which skips the `BEGIN`/`ROLLBACK` round trips. Every change is a POST and keeps a real transaction.
+- No connection pre-ping. TCP keepalives keep pooled connections alive instead.
+- Dashboard figures are batched into one query each (`_figures` in `routers/dashboard.py`).
+- Static files are linked through `asset()` with a content hash, cached for a year and gzipped. Icons are a 20 KB self-hosted sprite (`static/icons.svg`). After using a new Lucide icon name, rebuild it with `python -m scripts.build_icons icon-nodes.json` (see the script for where to get the file).
+
 ## Layout
 
 ```
@@ -79,8 +103,8 @@ app/
   templating.py     Jinja setup, filters, sidebar nav
   services/         billing (invoice_for/charge), audit
   routers/          auth, dashboard, patients, appointments, visits, wards, pharmacy, lab, billing, admin
-  templates/        one folder per module; _macros.html holds shared components
-  static/           app.css (design tokens + components), app.js (progressive enhancement)
+  templates/        one folder per module; _macros.html holds shared components, print/ the printable documents
+  static/           app.css (design tokens + components), app.js (progressive enhancement), icons.svg (sprite)
 alembic/            migrations — `alembic revision --autogenerate -m "…"` after model changes
-scripts/            seed.py, dev.sh
+scripts/            seed.py, dev.sh, build_icons.py
 ```

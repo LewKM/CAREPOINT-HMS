@@ -12,7 +12,8 @@
   <div class="hero-side">
     <span class="pill">{{ m.icon("calendar-days") }}{{ today().strftime("%a, %d %b %Y") }}</span>
     <span class="pill">{{ m.icon("hospital") }}{{ settings.hospital_name }}</span>
+    <span class="pill live-stamp" data-live-stamp>Live</span>
   </div>
 </section>
-{% include partial %}
+<div id="dash" data-live="30">{% include partial %}</div>
 {% endblock %}

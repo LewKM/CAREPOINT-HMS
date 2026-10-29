@@ -22,7 +22,8 @@
         <div class="fieldset-title">Result</div>
         <div class="{{ 'alert danger' if o.is_abnormal else 'alert success' }}">{{ m.icon("triangle-alert" if o.is_abnormal else "circle-check") }}
           <div><strong>{{ o.result_value }} {{ o.test.unit or "" }}</strong>{% if o.result_notes %}<div>{{ o.result_notes }}</div>{% endif %}</div></div>
-        <p class="small muted" style="margin-top:8px">Released {{ o.completed_at|dt }} by {{ o.performed_by.full_name if o.performed_by else "—" }}</p>
+        <div class="row-between" style="margin-top:8px"><span class="small muted">Released {{ o.completed_at|dt }} by {{ o.performed_by.full_name if o.performed_by else "—" }}</span>
+          <a class="btn btn-sm" href="/visits/{{ o.encounter_id }}/lab-report?order={{ o.id }}">{{ m.icon("printer") }}Print report</a></div>
       {% elif o.status == LS.CANCELLED %}
         <hr><div class="alert warn">{{ m.icon("ban") }}<span>{{ o.result_notes }}</span></div>
       {% endif %}

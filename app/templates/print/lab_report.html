@@ -1,0 +1,10 @@
+{% extends "print/base.html" %}
+{% block title %}Lab report · {{ patient.full_name }}{% endblock %}
+{% block back %}{{ back_to }}{% endblock %}
+{% block doc_title %}Laboratory report{% endblock %}
+{% block doc_meta %}Visit #{{ enc.id }}<br>{{ enc.checked_in_at|date }}<br>Requested by {{ enc.doctor.display_name if enc.doctor else "—" }}{% endblock %}
+{% block content %}
+{% with orders=enc.lab_orders %}{% include "print/_labs.html" %}{% endwith %}
+{% if not enc.lab_orders|selectattr("status", "equalto", models.LabStatus.COMPLETED)|list %}<p>No results have been released for this visit yet.</p>{% endif %}
+<div class="doc-sign"><div>Laboratory technologist</div><div>Verified by</div></div>
+{% endblock %}

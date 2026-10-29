@@ -7,6 +7,7 @@
 <div class="crumbs"><a href="/visits">Visit queue</a> <span>/</span> Visit #{{ enc.id }}</div>
 {% call m.patient_banner(patient) %}
   {{ m.badge(enc.priority) }}
+  <a class="btn" href="/visits/{{ enc.id }}/summary">{{ m.icon("printer") }}Visit summary</a>
   {% if active and can(user, "consult.perform") %}
     {% if enc.status != S.IN_PROGRESS %}{{ m.post_button("/visits/" ~ enc.id ~ "/start", "Start consultation", "play", "btn btn-primary") }}
     {% else %}{{ m.post_button("/visits/" ~ enc.id ~ "/complete", "Close visit", "circle-check", "btn btn-primary", confirm="Close this visit? Notes and orders will be locked.") }}{% endif %}
@@ -103,7 +104,8 @@
 
     {# ------------------------------------------------ labs #}
     <div class="card" id="labs">
-      <div class="card-head"><h2>{{ m.icon("flask-conical") }}Laboratory</h2></div>
+      <div class="card-head"><h2>{{ m.icon("flask-conical") }}Laboratory</h2>
+        {% if enc.lab_orders|selectattr("status", "equalto", models.LabStatus.COMPLETED)|list %}<a class="btn btn-sm btn-ghost" href="/visits/{{ enc.id }}/lab-report">{{ m.icon("printer") }}Lab report</a>{% endif %}</div>
       {% if enc.lab_orders %}
       <div class="table-wrap"><table>
         <thead><tr><th>Test</th><th>Priority</th><th>Result</th><th>Status</th></tr></thead>

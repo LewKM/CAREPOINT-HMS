@@ -3,6 +3,7 @@ from urllib.parse import quote
 from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from .config import BASE_DIR, settings
@@ -23,7 +24,20 @@ app.add_middleware(
     same_site="lax",
     https_only=settings.https_only,
 )
-app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+class VersionedStatic(StaticFiles):
+    """Files linked through asset() carry a content hash in ?v=, so browsers may keep them for a year."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200 and scope.get("query_string", b"").startswith(b"v="):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+app.mount("/static", VersionedStatic(directory=BASE_DIR / "app" / "static"), name="static")
 
 
 @app.middleware("http")

@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date, datetime
 from decimal import Decimal
 from urllib.parse import urlencode, urlparse
@@ -47,6 +48,23 @@ NAV = [
 ]
 
 
+# Command palette (Ctrl+K) shortcuts, alongside every NAV page: (label, href, lucide icon, permission)
+ACTIONS = [
+    ("Register a patient", "/patients/new", "user-plus", "patients.register"),
+    ("Book an appointment", "/appointments/new", "calendar-plus", "appointments.manage"),
+    ("Walk-in / emergency visit", "/visits/new", "siren", "visits.checkin"),
+    ("Add a drug to the formulary", "/pharmacy/drugs/new", "pill", "pharmacy.inventory"),
+    ("Add a staff account", "/admin/users/new", "user-plus", "admin.users"),
+    ("Change my password", "/account/password", "key-round", "dashboard"),
+]
+
+
+def palette_for(user) -> list[dict]:
+    pages = [dict(label=i[0], href=i[1], icon=i[2], group=section) for section, items in nav_for(user) for i in items]
+    actions = [dict(label=a[0], href=a[1], icon=a[2], group="Actions") for a in ACTIONS if can(user, a[3])]
+    return actions + pages
+
+
 def nav_for(user) -> list:
     out = []
     for section, items in NAV:
@@ -63,6 +81,21 @@ def nav_active(request: Request, href: str) -> bool:
     # Longest matching nav entry wins so /pharmacy/inventory doesn't also light /pharmacy.
     matches = [i[1] for _, items in NAV for i in items if i[1] != "/" and (path == i[1] or path.startswith(i[1] + "/"))]
     return bool(matches) and max(matches, key=len) == href
+
+
+# ---------------------------------------------------------------- static assets
+
+_asset_versions: dict[str, tuple[int, str]] = {}
+
+
+def asset(path: str) -> str:
+    """URL for a static file with a content hash, so it can be cached for a year and still update on change."""
+    file = BASE_DIR / "app" / "static" / path
+    mtime = file.stat().st_mtime_ns
+    cached = _asset_versions.get(path)
+    if not cached or cached[0] != mtime:
+        cached = _asset_versions[path] = (mtime, hashlib.sha1(file.read_bytes()).hexdigest()[:10])
+    return f"/static/{path}?v={cached[1]}"
 
 
 # ---------------------------------------------------------------- filters
@@ -121,6 +154,14 @@ def tone(value) -> str:
     return TONES.get(str(value), "muted")
 
 
+def wait_tone(value: datetime | None) -> str:
+    """How worrying a wait is: 30 min turns amber, an hour turns red."""
+    if not value:
+        return ""
+    mins = (datetime.now(value.tzinfo) - value).total_seconds() / 60
+    return "wait-danger" if mins >= 60 else "wait-warn" if mins >= 30 else ""
+
+
 def options(items, label: str = "name", value: str = "id") -> list[tuple]:
     """(value, label) pairs for the select() macro."""
     return [(getattr(i, value), getattr(i, label)) for i in items]
@@ -137,9 +178,9 @@ def query(request: Request, **changes) -> str:
     return "?" + urlencode(params) if params else request.url.path
 
 
-templates.env.filters.update(dt=fmt_dt, time=fmt_time, date=fmt_date, money=money, ago=ago, tone=tone)
+templates.env.filters.update(dt=fmt_dt, time=fmt_time, date=fmt_date, money=money, ago=ago, tone=tone, wait_tone=wait_tone)
 templates.env.globals.update(
-    settings=settings, can=can, models=models, Role=models.Role,
+    settings=settings, can=can, models=models, Role=models.Role, asset=asset,
     role_summaries=ROLE_SUMMARIES, nav_active=nav_active, query=query, today=today_local, now=now_local, options=options, now_utc=models.utcnow,
 )
 
@@ -155,6 +196,8 @@ def render(request: Request, template: str, status_code: int = 200, **ctx):
     ctx.update(
         user=user,
         nav=nav_for(user) if user else [],
+        palette=palette_for(user) if user else [],
+        sprite=asset("icons.svg"),
         csrf_token=csrf_token(request),
         flashes=request.session.pop("_flash", []),
     )

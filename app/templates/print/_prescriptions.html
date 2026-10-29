@@ -1,0 +1,10 @@
+{% set live_rx = rxs|rejectattr("status", "equalto", models.PrescriptionStatus.CANCELLED)|list %}
+{% if live_rx %}
+<div class="doc-section">
+  <h3>{{ rx_title|default("Medication") }}</h3>
+  <table><thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th class="right">Days</th><th class="right">Qty</th><th>Instructions</th></tr></thead>
+  <tbody>{% for rx in live_rx %}{% for i in rx.items %}
+    <tr><td class="strong">{{ i.drug.label }}</td><td>{{ i.dose }}</td><td>{{ i.frequency }}</td><td class="right">{{ i.duration_days }}</td><td class="right">{{ i.quantity }}</td><td>{{ i.instructions or "" }}</td></tr>
+  {% endfor %}{% endfor %}</tbody></table>
+</div>
+{% endif %}

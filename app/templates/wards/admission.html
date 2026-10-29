@@ -33,7 +33,8 @@
     {% endif %}
     {% if not current %}
     <div class="card">
-      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2></div>
+      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2>
+        {% if can(user, "patients.clinical") %}<a class="btn btn-sm btn-ghost" href="/admissions/{{ adm.id }}/discharge-summary">{{ m.icon("printer") }}Discharge summary</a>{% endif %}</div>
       <div class="card-body"><dl class="kv">
         <dt>Discharged</dt><dd>{{ adm.discharged_at|dt }}</dd>
         <dt>Condition</dt><dd>{{ adm.discharge_condition }}</dd>
@@ -70,7 +71,8 @@
     {% endif %}
     {% if current and can(user, "wards.discharge") %}
     <div class="card" id="discharge">
-      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2></div>
+      <div class="card-head"><h2>{{ m.icon("log-out") }}Discharge</h2>
+        {% if can(user, "patients.clinical") %}<a class="btn btn-sm btn-ghost" href="/admissions/{{ adm.id }}/discharge-summary">{{ m.icon("printer") }}Discharge summary</a>{% endif %}</div>
       <form method="post" action="/admissions/{{ adm.id }}/discharge" class="card-body" data-confirm="Discharge this patient? Ward charges will be added to the bill.">
         {{ m.csrf() }}
         <div class="field"><label for="cond">Condition at discharge <span class="req">*</span></label>

@@ -1,0 +1,27 @@
+{% extends "print/base.html" %}
+{% block title %}Discharge summary · {{ patient.full_name }}{% endblock %}
+{% block back %}/admissions/{{ adm.id }}{% endblock %}
+{% block doc_title %}Discharge summary{% endblock %}
+{% block doc_meta %}Admission #{{ adm.id }}<br>{{ adm.bed.ward.name }} · {{ adm.bed.label }}{% endblock %}
+{% block content %}
+<div class="doc-section">
+  <h3>Stay</h3>
+  <dl class="kv">
+    <dt>Admitted</dt><dd>{{ adm.admitted_at|dt }}</dd>
+    <dt>Discharged</dt><dd>{{ adm.discharged_at|dt }}</dd>
+    <dt>Length of stay</dt><dd>{{ adm.days }} day(s)</dd>
+    <dt>Admitting doctor</dt><dd>{{ adm.admitting_doctor.full_name }}</dd>
+    <dt>Reason for admission</dt><dd class="pre">{{ adm.reason }}</dd>
+    <dt>Diagnosis</dt><dd class="pre strong">{{ adm.encounter.diagnosis or "—" }}</dd>
+    <dt>Condition at discharge</dt><dd class="strong">{{ adm.discharge_condition or "—" }}</dd>
+  </dl>
+</div>
+<div class="doc-section">
+  <h3>Summary &amp; instructions</h3>
+  <p class="pre">{{ adm.discharge_summary or "—" }}</p>
+  {% if adm.encounter.follow_up_date %}<p style="margin-top:8px"><strong>Follow-up:</strong> {{ adm.encounter.follow_up_date|date("%A, %d %B %Y") }}</p>{% endif %}
+</div>
+{% with rxs=adm.encounter.prescriptions, rx_title="Medication during stay and on discharge" %}{% include "print/_prescriptions.html" %}{% endwith %}
+{% with orders=adm.encounter.lab_orders %}{% include "print/_labs.html" %}{% endwith %}
+<div class="doc-sign"><div>{{ adm.discharged_by.full_name if adm.discharged_by else "Discharging doctor" }}</div><div>Signature &amp; stamp</div></div>
+{% endblock %}

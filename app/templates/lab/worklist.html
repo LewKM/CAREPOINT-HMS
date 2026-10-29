@@ -2,17 +2,19 @@
 {% import "_macros.html" as m with context %}
 {% block title %}Lab worklist{% endblock %}
 {% block content %}
-{{ m.page_head("Laboratory worklist", "STAT first, then urgent, then routine — oldest first within each.") }}
+{% call m.page_head("Laboratory worklist", "STAT first, then urgent, then routine — oldest first within each.") %}
+  <span class="live-stamp" data-live-stamp>Live</span>
+{% endcall %}
 <nav class="tabs" style="margin-bottom:14px">
   {% for key, label in [("open","All open"),("ordered","To collect"),("collected","In process"),("completed","Resulted today")] %}
     <a class="{{ 'active' if status == key }}" href="?status={{ key }}">{{ label }}</a>{% endfor %}
 </nav>
-<div class="card">
+<div class="card" id="worklist" data-live="20">
   {% if orders %}
   <div class="table-wrap"><table>
     <thead><tr><th>Test</th><th>Patient</th><th>Priority</th><th>Requested by</th><th>Status</th><th>{{ "Resulted" if status == "completed" else "Ordered" }}</th><th></th></tr></thead>
     <tbody>{% for o in orders %}
-      <tr class="row-link" data-href="/lab/orders/{{ o.id }}">
+      <tr data-key="o{{ o.id }}-{{ o.status.value }}" class="row-link" data-href="/lab/orders/{{ o.id }}">
         <td class="strong">{{ o.test.name }}<div class="sub">{{ o.test.code }} · {{ o.test.specimen }}</div></td>
         <td>{{ m.patient_cell(o.patient, link=False) }}</td><td>{{ m.badge(o.priority) }}</td>
         <td>{{ o.ordered_by.display_name }}</td>

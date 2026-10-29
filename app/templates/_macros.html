@@ -1,4 +1,4 @@
-{% macro icon(name, cls="") %}<i data-lucide="{{ name }}" class="{{ cls }}" aria-hidden="true"></i>{% endmacro %}
+{% macro icon(name, cls="") %}<svg class="lucide lucide-{{ name }} {{ cls }}" aria-hidden="true"><use href="{{ sprite }}#{{ name }}"/></svg>{% endmacro %}
 
 {% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
 

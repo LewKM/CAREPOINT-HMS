@@ -3,6 +3,7 @@
 {% block title %}Visit queue{% endblock %}
 {% block content %}
 {% call m.page_head("Visit queue", "Patients in the building, most urgent first.") %}
+  <span class="live-stamp" data-live-stamp>Live</span>
   {% if can(user, "visits.checkin") %}<a class="btn btn-primary" href="/visits/new">{{ m.icon("siren") }}Walk-in / emergency</a>{% endif %}
 {% endcall %}
 <div class="row-between" style="margin-bottom:14px;flex-wrap:wrap">
@@ -15,19 +16,19 @@
     <a class="btn btn-sm {{ 'btn-soft' if mine else 'btn-ghost' }}" href="{{ query(request, mine=None if mine else '1') }}">{{ m.icon("user-round") }}{{ "Showing mine" if mine else "Only mine" }}</a>
   {% endif %}
 </div>
-<div class="card">
+<div class="card" id="queue" data-live="20">
   {% if visits %}
   <div class="table-wrap"><table>
     <thead><tr><th>Patient</th><th>Type</th><th>Priority</th><th>Department / doctor</th><th>Status</th><th>{{ "Closed" if status == "completed" else "Waiting" }}</th><th></th></tr></thead>
     <tbody>
     {% for e in visits %}
-      <tr {% if can(user, "patients.clinical") %}class="row-link" data-href="/visits/{{ e.id }}"{% endif %}>
+      <tr data-key="v{{ e.id }}" {% if can(user, "patients.clinical") %}class="row-link" data-href="/visits/{{ e.id }}"{% endif %}>
         <td>{{ m.patient_cell(e.patient) }}</td>
         <td>{{ e.visit_type.label }}</td>
         <td>{{ m.badge(e.priority) }}</td>
         <td>{{ e.department.name }}<div class="sub">{{ e.doctor.display_name if e.doctor else "Next available doctor" }}</div></td>
         <td>{{ m.badge(e.status) }}</td>
-        <td class="nowrap muted">{{ (e.completed_at|time) if status == "completed" else (e.checked_in_at|ago) }}</td>
+        <td class="nowrap muted">{% if status == "completed" %}{{ e.completed_at|time }}{% else %}<span class="wait {{ e.checked_in_at|wait_tone if e.status != models.EncounterStatus.IN_PROGRESS }}">{{ e.checked_in_at|ago }}</span>{% endif %}</td>
         <td class="right">{% if can(user, "patients.clinical") %}<a class="btn btn-sm {{ 'btn-primary' if e.is_active }}" href="/visits/{{ e.id }}">Open</a>{% endif %}</td>
       </tr>
     {% endfor %}

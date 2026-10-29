@@ -14,8 +14,8 @@
       <div class="table-wrap"><table>
         <thead><tr><th>Patient</th><th>Priority</th><th>Doctor</th><th>Arrived</th><th></th></tr></thead>
         <tbody>{% for e in triage %}
-          <tr><td>{{ m.patient_cell(e.patient, link=False) }}</td><td>{{ m.badge(e.priority) }}</td>
-            <td>{{ e.doctor.display_name if e.doctor else "Next available" }}</td><td class="muted nowrap">{{ e.checked_in_at|ago }}</td>
+          <tr data-key="v{{ e.id }}"><td>{{ m.patient_cell(e.patient, link=False) }}</td><td>{{ m.badge(e.priority) }}</td>
+            <td>{{ e.doctor.display_name if e.doctor else "Next available" }}</td><td class="muted nowrap"><span class="wait {{ e.checked_in_at|wait_tone }}">{{ e.checked_in_at|ago }}</span></td>
             <td class="right"><a class="btn btn-sm btn-primary" href="/visits/{{ e.id }}#vitals">{{ m.icon("heart-pulse") }}Take vitals</a></td></tr>
         {% endfor %}</tbody></table></div>
       {% else %}{{ m.empty("Nobody waiting for triage.", "circle-check") }}{% endif %}

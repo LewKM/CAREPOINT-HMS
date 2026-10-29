@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=4">
+  <link rel="stylesheet" href="{{ asset('css/app.css') }}">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d7c74'/%3E%3Cpath d='M13 8h6v5h5v6h-5v5h-6v-5H8v-6h5z' fill='white'/%3E%3C/svg%3E">
-  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
-  <script src="/static/js/app.js?v=2" defer></script>
+  <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
-<body>
+<body data-sprite="{{ sprite }}">
+<div class="page-progress" aria-hidden="true"></div>
 {% import "_macros.html" as m with context %}
 {% block body %}
 <div class="shell">
@@ -55,6 +55,7 @@
         <kbd aria-hidden="true">/</kbd>
       </form>
       {% endif %}
+      <button class="palette-btn" type="button" data-palette-open aria-label="Open command palette">{{ m.icon("command") }}<span>Go to…</span><kbd>Ctrl K</kbd></button>
       <div class="topbar-meta">
         <span class="date">{{ m.icon("calendar") }}{{ today().strftime("%A, %d %B %Y") }}</span>
         <span class="badge plain tone-primary">{{ user.role.label }}</span>
@@ -67,6 +68,12 @@
     </main>
   </div>
 </div>
+<dialog class="palette" aria-label="Command palette">
+  <div class="palette-search">{{ m.icon("search") }}<input type="search" placeholder="Jump to a page, an action or a patient…" autocomplete="off" aria-label="Search"><kbd>Esc</kbd></div>
+  <div class="palette-results" role="listbox"></div>
+  <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span>Patients by name, MRN, phone or ID</span></div>
+</dialog>
+<script type="application/json" id="palette-data">{{ palette|tojson }}</script>
 {% endblock %}
 {% if flashes %}
 <div class="flashes" role="status">
